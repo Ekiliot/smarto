@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bun venit la Smarto!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8fafc;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            padding: 40px 30px;
+            text-align: center;
+            color: white;
+        }
+        
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+        
+        .welcome-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .greeting {
+            font-size: 28px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        
+        .message {
+            font-size: 16px;
+            color: #6b7280;
+            margin-bottom: 32px;
+            line-height: 1.7;
+        }
+        
+        .button-container {
+            text-align: center;
+            margin: 32px 0;
+        }
+        
+        .activate-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            text-decoration: none;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);
+        }
+        
+        .activate-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px -3px rgba(16, 185, 129, 0.4);
+        }
+        
+        .security-note {
+            background-color: #ecfdf5;
+            border: 1px solid #10b981;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 24px 0;
+        }
+        
+        .security-note h4 {
+            color: #065f46;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .security-note p {
+            color: #065f46;
+            font-size: 14px;
+            margin: 0;
+        }
+        
+        .benefits {
+            background-color: #f9fafb;
+            border-radius: 8px;
+            padding: 24px;
+            margin: 32px 0;
+        }
+        
+        .benefits h3 {
+            color: #374151;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        
+        .benefit-list {
+            list-style: none;
+        }
+        
+        .benefit-list li {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: #6b7280;
+        }
+        
+        .benefit-list li:before {
+            content: "✅";
+            margin-right: 12px;
+            font-size: 16px;
+        }
+        
+        .footer {
+            background-color: #f9fafb;
+            padding: 24px 30px;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .footer-text {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 8px;
+        }
+        
+        .footer-links {
+            margin-top: 16px;
+        }
+        
+        .footer-links a {
+            color: #10b981;
+            text-decoration: none;
+            font-size: 14px;
+            margin: 0 8px;
+        }
+        
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+        
+        .divider {
+            height: 1px;
+            background-color: #e5e7eb;
+            margin: 24px 0;
+        }
+        
+        .features {
+            display: flex;
+            justify-content: space-around;
+            margin: 32px 0;
+            text-align: center;
+        }
+        
+        .feature {
+            flex: 1;
+            padding: 0 16px;
+        }
+        
+        .feature-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .feature-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+        
+        .feature-desc {
+            font-size: 12px;
+            color: #6b7280;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            .header, .content, .footer {
+                padding: 24px 20px;
+            }
+            
+            .features {
+                flex-direction: column;
+                gap: 16px;
+            }
+            
+            .feature {
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="welcome-icon">🎉</div>
+            <div class="logo">🔧 Smarto</div>
+            <div class="subtitle">Bun venit în comunitatea noastră!</div>
+        </div>
+        
+        <!-- Content -->
+        <div class="content">
+            <div class="greeting">Bun venit la Smarto! 🏠</div>
+            
+            <div class="message">
+                Mulțumim că v-ați înregistrat la Smarto - magazinul tău de produse pentru casa inteligentă! 
+                Pentru a activa contul și a începe să faceți cumpărături, vă rugăm să confirmați adresa de email.
+            </div>
+            
+            <!-- Activate Button -->
+            <div class="button-container">
+                <a href="{{ .ConfirmationURL }}" class="activate-button">
+                    ✨ Activează contul meu
+                </a>
+            </div>
+            
+            <!-- Security Note -->
+            <div class="security-note">
+                <h4>🔒 Activare securizată</h4>
+                <p>
+                    Acest link de activare este valid doar pentru 24 de ore și poate fi folosit o singură dată. 
+                    Dacă nu v-ați înregistrat la Smarto, vă rugăm să ignorați acest email.
+                </p>
+            </div>
+            
+            <!-- Benefits -->
+            <div class="benefits">
+                <h3>🎁 Ce veți găsi la Smarto:</h3>
+                <ul class="benefit-list">
+                    <li>Produse de calitate pentru casa inteligentă</li>
+                    <li>Livrare rapidă în toată Moldova</li>
+                    <li>Suport tehnic specializat</li>
+                    <li>Garanție de 24 de luni</li>
+                    <li>Oferte exclusive pentru membri</li>
+                    <li>Returnare gratuită în 14 zile</li>
+                </ul>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <!-- Features -->
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-icon">🏠</div>
+                    <div class="feature-title">Casa inteligentă</div>
+                    <div class="feature-desc">Produse pentru automatizare</div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-title">Energie eficientă</div>
+                    <div class="feature-desc">Economisiți pe facturi</div>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🔒</div>
+                    <div class="feature-title">Siguranță</div>
+                    <div class="feature-desc">Protecție pentru familia ta</div>
+                </div>
+            </div>
+            
+            <div class="message">
+                <strong>Probleme cu link-ul?</strong><br>
+                Dacă butonul nu funcționează, copiați și lipiți următoarea adresă în browser-ul dvs.:<br>
+                <a href="{{ .ConfirmationURL }}" style="color: #10b981; word-break: break-all;">{{ .ConfirmationURL }}</a>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-text">
+                Acest email a fost trimis de Smarto - magazinul tău de produse pentru casa inteligentă
+            </div>
+            <div class="footer-text">
+                Dacă aveți întrebări, contactați-ne la support@smarto.md
+            </div>
+            <div class="footer-links">
+                <a href="https://smarto.md/terms">Termeni și condiții</a>
+                <a href="https://smarto.md/privacy">Politica de confidențialitate</a>
+                <a href="https://smarto.md">Website</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

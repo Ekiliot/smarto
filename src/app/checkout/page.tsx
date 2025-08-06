@@ -1,0 +1,1374 @@
+'use client'
+
+import { useState, useEffect, useMemo } from 'react'
+import type { ReactNode } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import { useCart } from '@/hooks/useCart'
+import { useAuth } from '@/components/SupabaseAuthProvider'
+import { useShipping } from '@/hooks/useShipping'
+import { useOrders } from '@/hooks/useSupabase'
+import { useBundleOffers } from '@/hooks/useSupabase'
+import BundleOffer from '@/components/BundleOffer'
+import Header from '@/components/Header'
+import Footer from '@/components/Footer'
+import AuthGuard from '@/components/AuthGuard'
+import {
+  CreditCard,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Truck,
+  Lock,
+  CheckCircle,
+  AlertCircle,
+  ArrowLeft,
+  Loader2,
+  Package
+} from 'lucide-react'
+import Link from 'next/link'
+
+interface CheckoutForm {
+  // Personal Information
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  
+  // Shipping Address
+  address: string
+  city: string
+  postalCode: string
+  country: string
+  
+  // Payment Information
+  cardNumber: string
+  cardHolder: string
+  expiryMonth: string
+  expiryYear: string
+  cvv: string
+}
+
+export default function CheckoutPage() {
+  const router = useRouter()
+  const { user } = useAuth()
+  const { cartItems, getTotalPrice, clearCart, loading: cartLoading } = useCart()
+  const { getAvailableMethods, getCheapestMethod } = useShipping()
+  const { createOrder } = useOrders()
+  const { bundleOffers, loading: bundlesLoading } = useBundleOffers()
+  
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [selectedShippingMethod, setSelectedShippingMethod] = useState<string | null>(null)
+  const [showAchievementAnimation, setShowAchievementAnimation] = useState(false)
+  
+  const [formData, setFormData] = useState<CheckoutForm>({
+    firstName: '',
+    lastName: '',
+    email: user?.email || '',
+    phone: '',
+    address: '',
+    city: '',
+    postalCode: '',
+    country: 'Moldova',
+    cardNumber: '',
+    cardHolder: '',
+    expiryMonth: '',
+    expiryYear: '',
+    cvv: ''
+  })
+
+  // Calculate totals
+  const subtotal = getTotalPrice()
+  const availableShippingMethods = getAvailableMethods(subtotal)
+  const cheapestMethod = getCheapestMethod(subtotal)
+  
+  // Calculate free shipping progress
+  const freeShippingProgress = useMemo(() => {
+    // Debug: Log shipping data
+    console.log('Shipping debug:', {
+      subtotal,
+      availableShippingMethods: availableShippingMethods.length,
+      methods: availableShippingMethods.map(m => ({
+        name: m.method.name,
+        cost: m.cost,
+        isFree: m.isFree,
+        threshold: m.method.free_shipping_threshold,
+        hasThreshold: !!(m.method.free_shipping_threshold && m.method.free_shipping_threshold > 0)
+      }))
+    })
+    
+    // Find all methods that have free shipping threshold (not just currently free ones)
+    const methodsWithThreshold = availableShippingMethods.filter(method => {
+      const threshold = method.method.free_shipping_threshold
+      console.log(`Method ${method.method.name}: threshold = ${threshold}, type = ${typeof threshold}`)
+      return threshold !== null && threshold !== undefined && threshold > 0
+    })
+    
+    console.log('Methods with threshold:', methodsWithThreshold.length)
+    console.log('Methods with threshold details:', methodsWithThreshold.map(m => ({
+      name: m.method.name,
+      threshold: m.method.free_shipping_threshold,
+      cost: m.cost
+    })))
+    
+    if (methodsWithThreshold.length === 0) {
+      // No methods with free shipping threshold
+      console.log('No methods with free shipping threshold found')
+      console.log('All available methods:', availableShippingMethods.map(m => ({
+        name: m.method.name,
+        free_shipping_threshold: m.method.free_shipping_threshold,
+        type: typeof m.method.free_shipping_threshold
+      })))
+      return null
+    }
+    
+    // Sort methods by threshold (lowest to highest)
+    const sortedMethods = methodsWithThreshold.sort((a, b) => 
+      (a.method.free_shipping_threshold || 0) - (b.method.free_shipping_threshold || 0)
+    )
+    
+    console.log('Sorted methods by threshold:', sortedMethods.map(m => ({
+      name: m.method.name,
+      threshold: m.method.free_shipping_threshold
+    })))
+    
+    // Find the NEXT threshold we haven't reached yet
+    const nextUnreachedMethod = sortedMethods.find(method => 
+      subtotal < (method.method.free_shipping_threshold || 0)
+    )
+    
+    // Find the highest threshold we've already achieved
+    const highestAchievedMethod = sortedMethods
+      .filter(method => subtotal >= (method.method.free_shipping_threshold || 0))
+      .pop()
+    
+    const targetMethod = nextUnreachedMethod || highestAchievedMethod
+    
+    if (!targetMethod) {
+      console.log('No target method found')
+      return null
+    }
+    
+    const threshold = targetMethod.method.free_shipping_threshold || 0
+    const isNextTarget = nextUnreachedMethod !== undefined
+    
+    console.log('Target method:', {
+      name: targetMethod.method.name,
+      threshold,
+      isNextTarget,
+      subtotal,
+      isAchieved: !isNextTarget
+    })
+    
+    if (subtotal >= threshold) {
+      // Already have free shipping for this method
+      return {
+        method: targetMethod.method,
+        threshold,
+        current: subtotal,
+        progress: 100,
+        remaining: 0,
+        isAchieved: true,
+        isNextTarget: false
+      }
+    }
+    
+    // Calculate progress
+    const progress = Math.min((subtotal / threshold) * 100, 99.9)
+    const remaining = threshold - subtotal
+    
+    console.log('Progress calculated:', { progress, remaining, isNextTarget })
+    
+    return {
+      method: targetMethod.method,
+      threshold,
+      current: subtotal,
+      progress,
+      remaining,
+      isAchieved: false,
+      isNextTarget
+    }
+  }, [availableShippingMethods, subtotal])
+
+  // Helper function to determine if a method is premium/luxury
+  const isPremiumMethod = (methodName: string): boolean => {
+    const premiumKeywords = ['express', 'premium', 'luxury', 'vip', 'fast', 'urgent']
+    return premiumKeywords.some(keyword => 
+      methodName.toLowerCase().includes(keyword)
+    )
+  }
+  
+  // Set default shipping method if not selected
+  useEffect(() => {
+    if (!selectedShippingMethod && cheapestMethod) {
+      setSelectedShippingMethod(cheapestMethod.method.id)
+    }
+  }, [selectedShippingMethod, cheapestMethod])
+  
+  // Get selected shipping calculation
+  const selectedShipping = availableShippingMethods.find(
+    calc => calc.method.id === selectedShippingMethod
+  ) || cheapestMethod
+  
+  const shippingCost = selectedShipping ? selectedShipping.cost : 0
+  const total = subtotal + shippingCost
+
+  // Redirect if cart is empty
+  useEffect(() => {
+    if (!cartLoading && cartItems.length === 0) {
+      router.push('/products')
+    }
+  }, [cartItems, cartLoading, router])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const formatCardNumber = (value: string) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '')
+    const matches = v.match(/\d{4,16}/g)
+    const match = matches && matches[0] || ''
+    const parts = []
+    
+    for (let i = 0, len = match.length; i < len; i += 4) {
+      parts.push(match.substring(i, i + 4))
+    }
+    
+    if (parts.length) {
+      return parts.join(' ')
+    } else {
+      return v
+    }
+  }
+
+  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatCardNumber(e.target.value)
+    setFormData(prev => ({
+      ...prev,
+      cardNumber: formatted
+    }))
+  }
+
+  const validateForm = () => {
+    const required = ['firstName', 'lastName', 'email', 'phone', 'address', 'city', 'postalCode']
+    for (const field of required) {
+      if (!formData[field as keyof CheckoutForm]) {
+        setMessage({ type: 'error', text: `Câmpul ${field} este obligatoriu` })
+        return false
+      }
+    }
+    
+    if (!selectedShippingMethod) {
+      setMessage({ type: 'error', text: 'Vă rugăm să alegeți o metodă de livrare' })
+      return false
+    }
+    
+    if (formData.cardNumber.replace(/\s/g, '').length < 16) {
+      setMessage({ type: 'error', text: 'Numărul cardului este invalid' })
+      return false
+    }
+    
+    if (formData.cvv.length < 3) {
+      setMessage({ type: 'error', text: 'CVV-ul este invalid' })
+      return false
+    }
+    
+    return true
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!validateForm()) return
+    
+    setIsProcessing(true)
+    setMessage(null)
+    
+    try {
+      // Simulate payment processing
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Create order in database
+      const createdOrder = await createOrder({
+        user_id: user!.id,
+        order_number: `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+        subtotal,
+        shipping_cost: shippingCost,
+        total_amount: total,
+        shipping_method_id: selectedShipping?.method.id,
+        shipping_address: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          postalCode: formData.postalCode,
+          country: formData.country
+        },
+        billing_address: {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          postalCode: formData.postalCode,
+          country: formData.country
+        },
+        payment_method: 'card',
+        items: cartItems.map(item => ({
+          product_id: item.product_id,
+          product_title: item.product?.title || 'Unknown Product',
+          product_price: typeof item.product?.retail_price === 'string' 
+            ? parseFloat(item.product.retail_price)
+            : (item.product?.retail_price || 0),
+          quantity: item.quantity,
+          total_price: typeof item.product?.retail_price === 'string' 
+            ? parseFloat(item.product.retail_price) * item.quantity
+            : (item.product?.retail_price || 0) * item.quantity
+        }))
+      })
+      
+      console.log('Order created successfully:', createdOrder)
+      
+      // Simulate successful payment
+      setMessage({ 
+        type: 'success', 
+        text: 'Plata a fost procesată cu succes! Veți primi un email de confirmare.' 
+      })
+      
+      // Set flags for success page
+      sessionStorage.setItem('checkoutCompleted', 'true')
+      sessionStorage.setItem('orderNumber', createdOrder.order_number)
+      
+      // Clear cart after successful payment
+      await clearCart()
+      
+      // Redirect to success page after 3 seconds
+      setTimeout(() => {
+        router.push('/checkout/success')
+      }, 3000)
+      
+    } catch (error) {
+      console.error('Error creating order:', error)
+      setMessage({ 
+        type: 'error', 
+        text: `Eroare la procesarea plății: ${error instanceof Error ? error.message : 'Eroare necunoscută'}` 
+      })
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const formatPrice = (price: number): string => {
+    return price.toLocaleString('ro-RO')
+  }
+
+  if (cartLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Se încarcă...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    )
+  }
+
+  if (cartItems.length === 0) {
+    return null
+  }
+
+  return (
+    <AuthGuard>
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <main className="py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Header */}
+            <div className="mb-8">
+              <Link 
+                href="/products" 
+                className="inline-flex items-center text-orange-600 hover:text-orange-700 mb-4"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Înapoi la produse
+              </Link>
+              <h1 className="text-3xl font-bold text-gray-900">Finalizare comandă</h1>
+              <p className="text-gray-600 mt-2">Completați informațiile pentru livrare și plată</p>
+            </div>
+
+            {/* Debug Info */}
+            <div className="mb-4 p-4 bg-gray-100 rounded-lg text-xs">
+              <p><strong>Debug:</strong> Subtotal: {formatPrice(subtotal)} MDL</p>
+              <p><strong>Debug:</strong> Free shipping progress: {freeShippingProgress ? 'EXISTS' : 'NULL'}</p>
+              <p><strong>Debug:</strong> Is achieved: {freeShippingProgress?.isAchieved ? 'YES' : 'NO'}</p>
+              <p><strong>Debug:</strong> Available methods: {availableShippingMethods.length}</p>
+            </div>
+
+            {/* Bundle Offers */}
+            {bundleOffers.length > 0 && (
+              <div className="mb-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                  <Package className="w-6 h-6 mr-2" />
+                  Oferte Speciale Bundle
+                </h2>
+                <div className="space-y-6">
+                  {bundleOffers.map((bundleOffer) => (
+                    <BundleOffer
+                      key={bundleOffer.bundle.id}
+                      bundleOffer={bundleOffer}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Free Shipping Progress Bar with Animation */}
+            <AnimatePresence mode="wait">
+              {freeShippingProgress && !freeShippingProgress.isAchieved && (
+                <motion.div
+                  key="progress"
+                  initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                  transition={{ duration: 0.5, ease: "easeInOut" }}
+                  className={`mb-8 border rounded-xl p-6 relative overflow-hidden ${
+                    isPremiumMethod(freeShippingProgress.method.name)
+                      ? 'bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-blue-200'
+                      : 'bg-gradient-to-r from-orange-50 via-yellow-50 to-orange-50 border-orange-200'
+                  }`}>
+                  {/* Animated background */}
+                  <div className={`absolute inset-0 animate-pulse ${
+                    isPremiumMethod(freeShippingProgress.method.name)
+                      ? 'bg-gradient-to-r from-blue-100/20 via-indigo-100/20 to-purple-100/20'
+                      : 'bg-gradient-to-r from-orange-100/20 to-yellow-100/20'
+                  }`} />
+                  
+                  {/* Premium sparkles effect */}
+                  {isPremiumMethod(freeShippingProgress.method.name) && (
+                    <div className="absolute inset-0">
+                      <div className="absolute top-0 left-1/4 w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                      <div className="absolute top-2 left-1/3 w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                      <div className="absolute top-1 left-1/2 w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+                      <div className="absolute top-3 left-2/3 w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.6s' }} />
+                      <div className="absolute top-0 left-3/4 w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.8s' }} />
+                      <div className="absolute top-4 left-1/5 w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '1s' }} />
+                    </div>
+                  )}
+                  
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg relative overflow-hidden ${
+                          isPremiumMethod(freeShippingProgress.method.name)
+                            ? 'bg-gradient-to-br from-blue-400 via-indigo-500 to-purple-600'
+                            : 'bg-gradient-to-br from-orange-400 to-orange-600'
+                        }`}>
+                          <Truck className="w-6 h-6 text-white relative z-10" />
+                          {/* Shimmer overlay on the background */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
+                        </div>
+                        <div>
+                          <h3 className={`text-xl font-bold ${
+                            isPremiumMethod(freeShippingProgress.method.name)
+                              ? 'text-gray-900'
+                              : 'text-gray-900'
+                          }`}>
+                            Livrare gratuită {freeShippingProgress.method.name}!
+                          </h3>
+                          <p className="text-sm text-gray-600">
+                            Mai aveți nevoie de <span className={`font-semibold ${
+                              isPremiumMethod(freeShippingProgress.method.name)
+                                ? 'text-blue-600'
+                                : 'text-orange-600'
+                            }`}>
+                              {formatPrice(freeShippingProgress.remaining)} MDL
+                            </span> pentru livrare gratuită
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`text-3xl font-bold bg-clip-text text-transparent ${
+                          isPremiumMethod(freeShippingProgress.method.name)
+                            ? 'bg-gradient-to-r from-blue-600 via-indigo-700 to-purple-800'
+                            : 'bg-gradient-to-r from-orange-600 to-orange-800'
+                        }`}>
+                          {formatPrice(freeShippingProgress.current)} / {formatPrice(freeShippingProgress.threshold)} MDL
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {freeShippingProgress.progress.toFixed(1)}% completat
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Enhanced Progress Bar */}
+                    <div className="relative mb-4">
+                      <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden shadow-inner">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden ${
+                            isPremiumMethod(freeShippingProgress.method.name)
+                              ? 'bg-gradient-to-r from-blue-400 via-indigo-500 to-purple-600'
+                              : 'bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600'
+                          }`}
+                          style={{ width: `${freeShippingProgress.progress}%` }}
+                        >
+                          {/* Shimmer effect */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
+                        </div>
+                      </div>
+                      
+                      {/* Animated Progress Indicator */}
+                      <div 
+                        className={`absolute top-0 w-8 h-8 rounded-full border-4 border-white shadow-xl transform -translate-y-1 transition-all duration-1000 ease-out ${
+                          isPremiumMethod(freeShippingProgress.method.name)
+                            ? 'bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-700'
+                            : 'bg-gradient-to-br from-orange-500 to-orange-700'
+                        }`}
+                        style={{ left: `calc(${freeShippingProgress.progress}% - 16px)` }}
+                      >
+                        <div className={`w-full h-full rounded-full animate-ping ${
+                          isPremiumMethod(freeShippingProgress.method.name)
+                            ? 'bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-700'
+                            : 'bg-gradient-to-br from-orange-500 to-orange-700'
+                        }`} />
+                        <div className="absolute inset-1 bg-white rounded-full" />
+                      </div>
+                    </div>
+                    
+                    {/* Smart Motivational Message */}
+                    <div className="text-center">
+                      <div className="inline-flex items-center space-x-2 px-4 py-2 bg-white/80 rounded-full shadow-sm">
+                        {freeShippingProgress.progress > 90 ? (
+                          <>
+                            <span className="text-2xl">🎉</span>
+                            <span className={`text-sm font-semibold ${
+                              isPremiumMethod(freeShippingProgress.method.name)
+                                ? 'text-blue-600'
+                                : 'text-orange-600'
+                            }`}>
+                              Aproape acolo! Mai aveți nevoie doar de {formatPrice(freeShippingProgress.remaining)} MDL pentru livrare gratuită {freeShippingProgress.method.name}!
+                            </span>
+                          </>
+                        ) : freeShippingProgress.progress > 70 ? (
+                          <>
+                            <span className="text-2xl">🚀</span>
+                            <span className={`text-sm font-semibold ${
+                              isPremiumMethod(freeShippingProgress.method.name)
+                                ? 'text-blue-600'
+                                : 'text-orange-600'
+                            }`}>
+                              Excelent! Sunteți aproape de livrare gratuită {freeShippingProgress.method.name}!
+                            </span>
+                          </>
+                        ) : freeShippingProgress.progress > 50 ? (
+                          <>
+                            <span className="text-2xl">⚡</span>
+                            <span className={`text-sm font-semibold ${
+                              isPremiumMethod(freeShippingProgress.method.name)
+                                ? 'text-blue-600'
+                                : 'text-orange-600'
+                            }`}>
+                              Jumătatea drumului! Continuă pentru livrare gratuită {freeShippingProgress.method.name}!
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-2xl">💡</span>
+                            <span className="text-sm font-semibold text-gray-700">
+                              Adăugați mai multe produse pentru livrare gratuită {freeShippingProgress.method.name}!
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+                )}
+
+                {/* Free Shipping Achieved Message with Animation */}
+                {freeShippingProgress && freeShippingProgress.isAchieved && (
+                  <motion.div
+                    key="achieved"
+                    initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                    transition={{ duration: 0.5, ease: "easeInOut" }}
+                    className={`mb-8 border rounded-xl p-6 relative overflow-hidden ${
+                      isPremiumMethod(freeShippingProgress.method.name)
+                        ? 'bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-blue-200'
+                        : 'bg-gradient-to-r from-green-50 via-emerald-50 to-green-50 border-green-200'
+                    }`}>
+                    {/* Celebration animation */}
+                    <div className="absolute inset-0">
+                      {isPremiumMethod(freeShippingProgress.method.name) ? (
+                        // Premium sparkles
+                        <>
+                          <div className="absolute top-0 left-1/4 w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                          <div className="absolute top-2 left-1/3 w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                          <div className="absolute top-1 left-1/2 w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+                          <div className="absolute top-3 left-2/3 w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.6s' }} />
+                          <div className="absolute top-0 left-3/4 w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.8s' }} />
+                          <div className="absolute top-4 left-1/5 w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '1s' }} />
+                        </>
+                      ) : (
+                        // Regular confetti
+                        <>
+                          <div className="absolute top-0 left-1/4 w-2 h-2 bg-yellow-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                          <div className="absolute top-2 left-1/3 w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                          <div className="absolute top-1 left-1/2 w-2 h-2 bg-red-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
+                          <div className="absolute top-3 left-2/3 w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.6s' }} />
+                          <div className="absolute top-0 left-3/4 w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: '0.8s' }} />
+                        </>
+                      )}
+                    </div>
+                    
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-center space-x-4">
+                        <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg relative overflow-hidden ${
+                          isPremiumMethod(freeShippingProgress.method.name)
+                            ? 'bg-gradient-to-br from-blue-400 via-indigo-500 to-purple-600'
+                            : 'bg-gradient-to-br from-green-400 to-green-600'
+                        }`}>
+                          <CheckCircle className="w-8 h-8 text-white relative z-10" />
+                          {/* Shimmer overlay on the background */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
+                        </div>
+                        <div className="text-center">
+                          <h3 className={`text-2xl font-bold bg-clip-text text-transparent ${
+                            isPremiumMethod(freeShippingProgress.method.name)
+                              ? 'bg-gradient-to-r from-blue-600 via-indigo-700 to-purple-800'
+                              : 'bg-gradient-to-r from-green-600 to-green-800'
+                          }`}>
+                            🎉 Felicitări! Livrare gratuită activată!
+                          </h3>
+                          <p className={`text-lg font-semibold ${
+                            isPremiumMethod(freeShippingProgress.method.name)
+                              ? 'text-blue-700'
+                              : 'text-green-700'
+                          }`}>
+                            {freeShippingProgress.method.name}
+                          </p>
+                          <p className={`text-sm ${
+                            isPremiumMethod(freeShippingProgress.method.name)
+                              ? 'text-blue-600'
+                              : 'text-green-600'
+                          }`}>
+                            Livrare în {freeShippingProgress.method.estimated_days || 3-5} zile lucrătoare
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Achievement badge */}
+                      <div className="mt-4 text-center">
+                        <div className={`inline-flex items-center space-x-2 px-4 py-2 rounded-full ${
+                          isPremiumMethod(freeShippingProgress.method.name)
+                            ? 'bg-blue-100'
+                            : 'bg-green-100'
+                        }`}>
+                          <span className="text-lg">🏆</span>
+                          <span className={`text-sm font-semibold ${
+                            isPremiumMethod(freeShippingProgress.method.name)
+                              ? 'text-blue-800'
+                              : 'text-green-800'
+                          }`}>
+                            Economisiți {formatPrice(freeShippingProgress.method.shipping_cost || 0)} MDL pe livrare!
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Checkout Form */}
+              <div className="lg:col-span-2 space-y-8">
+                <form onSubmit={handleSubmit} className="space-y-8">
+                  {/* Personal Information */}
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center space-x-3 mb-6">
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <User className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-semibold text-gray-900">Informații personale</h2>
+                        <p className="text-sm text-gray-600">Datele de contact pentru comandă</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                          Prenume *
+                        </label>
+                        <input
+                          type="text"
+                          id="firstName"
+                          name="firstName"
+                          value={formData.firstName}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                          Nume *
+                        </label>
+                        <input
+                          type="text"
+                          id="lastName"
+                          name="lastName"
+                          value={formData.lastName}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                          Email *
+                        </label>
+                        <input
+                          type="email"
+                          id="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                          Telefon *
+                        </label>
+                        <input
+                          type="tel"
+                          id="phone"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          placeholder="+373 XX XXX XXX"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Shipping Address */}
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center space-x-3 mb-6">
+                      <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                        <MapPin className="w-5 h-5 text-green-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-semibold text-gray-900">Adresa de livrare</h2>
+                        <p className="text-sm text-gray-600">Unde să livrăm comanda</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
+                          Adresa completă *
+                        </label>
+                        <input
+                          type="text"
+                          id="address"
+                          name="address"
+                          value={formData.address}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          placeholder="Strada, numărul, apartamentul"
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
+                            Oraș *
+                          </label>
+                          <input
+                            type="text"
+                            id="city"
+                            name="city"
+                            value={formData.city}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 mb-2">
+                            Cod poștal *
+                          </label>
+                          <input
+                            type="text"
+                            id="postalCode"
+                            name="postalCode"
+                            value={formData.postalCode}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-2">
+                            Țara
+                          </label>
+                          <select
+                            id="country"
+                            name="country"
+                            value={formData.country}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          >
+                            <option value="Moldova">Moldova</option>
+                            <option value="Romania">România</option>
+                            <option value="Ukraine">Ucraina</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Shipping Method Selection */}
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center space-x-3 mb-6">
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <Truck className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-semibold text-gray-900">Metoda de livrare</h2>
+                        <p className="text-sm text-gray-600">Alegeți metoda de livrare preferată</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      {availableShippingMethods.length > 0 ? (
+                        availableShippingMethods.map((shippingCalc) => {
+                          const isSelected = selectedShippingMethod === shippingCalc.method.id
+                          const isAvailable = subtotal >= shippingCalc.method.min_order_amount
+                          const isFree = shippingCalc.isFree
+                          
+                          return (
+                            <div
+                              key={shippingCalc.method.id}
+                              className={`relative border rounded-lg p-4 cursor-pointer transition-all ${
+                                isSelected 
+                                  ? 'border-orange-500 bg-orange-50' 
+                                  : isAvailable 
+                                    ? 'border-gray-300 hover:border-orange-300' 
+                                    : 'border-gray-200 bg-gray-50 opacity-60'
+                              }`}
+                              onClick={() => {
+                                if (isAvailable) {
+                                  setSelectedShippingMethod(shippingCalc.method.id)
+                                }
+                              }}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                    isSelected 
+                                      ? 'border-orange-500 bg-orange-500' 
+                                      : 'border-gray-300'
+                                  }`}>
+                                    {isSelected && (
+                                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center space-x-2">
+                                      <h3 className="font-medium text-gray-900">
+                                        {shippingCalc.method.name}
+                                      </h3>
+                                      {!isAvailable && (
+                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                          Indisponibil
+                                        </span>
+                                      )}
+                                      {isFree && (
+                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                          Gratuită
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-gray-600">
+                                      {shippingCalc.method.description || `Livrare în ${shippingCalc.estimatedDays || 3-5} zile lucrătoare`}
+                                    </p>
+                                    {!isAvailable && (
+                                      <p className="text-xs text-red-600 mt-1">
+                                        Minim {formatPrice(shippingCalc.method.min_order_amount)} MDL pentru această metodă
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="font-medium text-gray-900">
+                                    {isFree ? 'Gratuită' : `${formatPrice(shippingCalc.cost)} MDL`}
+                                  </div>
+                                  {shippingCalc.method.free_shipping_threshold && !isFree && (
+                                    <div className="text-xs text-gray-500">
+                                      Gratuită peste {formatPrice(shippingCalc.method.free_shipping_threshold)} MDL
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })
+                      ) : (
+                        <div className="text-center py-8">
+                          <Truck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">Nu există metode de livrare</h3>
+                          <p className="text-gray-500">Contactați administratorul pentru a configura metodele de livrare.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Payment Information */}
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center space-x-3 mb-6">
+                      <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                        <CreditCard className="w-5 h-5 text-purple-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-semibold text-gray-900">Informații de plată</h2>
+                        <p className="text-sm text-gray-600">Datele cardului pentru plată</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label htmlFor="cardNumber" className="block text-sm font-medium text-gray-700 mb-2">
+                          Numărul cardului *
+                        </label>
+                        <input
+                          type="text"
+                          id="cardNumber"
+                          name="cardNumber"
+                          value={formData.cardNumber}
+                          onChange={handleCardNumberChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          placeholder="1234 5678 9012 3456"
+                          maxLength={19}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="cardHolder" className="block text-sm font-medium text-gray-700 mb-2">
+                          Numele de pe card *
+                        </label>
+                        <input
+                          type="text"
+                          id="cardHolder"
+                          name="cardHolder"
+                          value={formData.cardHolder}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          placeholder="NUMELE PRENUMELE"
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <label htmlFor="expiryMonth" className="block text-sm font-medium text-gray-700 mb-2">
+                            Luna *
+                          </label>
+                          <select
+                            id="expiryMonth"
+                            name="expiryMonth"
+                            value={formData.expiryMonth}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            required
+                          >
+                            <option value="">Luna</option>
+                            {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
+                              <option key={month} value={month.toString().padStart(2, '0')}>
+                                {month.toString().padStart(2, '0')}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label htmlFor="expiryYear" className="block text-sm font-medium text-gray-700 mb-2">
+                            Anul *
+                          </label>
+                          <select
+                            id="expiryYear"
+                            name="expiryYear"
+                            value={formData.expiryYear}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            required
+                          >
+                            <option value="">Anul</option>
+                            {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() + i).map(year => (
+                              <option key={year} value={year}>
+                                {year}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label htmlFor="cvv" className="block text-sm font-medium text-gray-700 mb-2">
+                            CVV *
+                          </label>
+                          <input
+                            type="text"
+                            id="cvv"
+                            name="cvv"
+                            value={formData.cvv}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            placeholder="123"
+                            maxLength={4}
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={isProcessing}
+                    className="w-full flex items-center justify-center space-x-2 px-6 py-4 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Se procesează plata...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-5 h-5" />
+                        <span>Finalizează comanda - {formatPrice(total)} MDL</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+
+              {/* Order Summary */}
+              <div className="lg:col-span-1">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-8">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-6">Sumar comandă</h2>
+                  
+                  {/* Free Shipping Progress (Compact) with Animation */}
+                  <AnimatePresence mode="wait">
+                    {freeShippingProgress && !freeShippingProgress.isAchieved && (
+                      <motion.div
+                        key="progress-compact"
+                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.4, ease: "easeInOut" }}
+                        className={`mb-6 p-4 border rounded-lg relative overflow-hidden ${
+                          isPremiumMethod(freeShippingProgress.method.name)
+                            ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'
+                            : 'bg-gradient-to-r from-orange-50 to-yellow-50 border-orange-200'
+                        }`}>
+                        {/* Animated background */}
+                        <div className={`absolute inset-0 animate-pulse ${
+                          isPremiumMethod(freeShippingProgress.method.name)
+                            ? 'bg-gradient-to-r from-blue-100/10 to-indigo-100/10'
+                            : 'bg-gradient-to-r from-orange-100/10 to-yellow-100/10'
+                        }`} />
+                        
+                        {/* Premium sparkles */}
+                        {isPremiumMethod(freeShippingProgress.method.name) && (
+                          <div className="absolute inset-0">
+                            <div className="absolute top-1 left-1/4 w-1 h-1 bg-blue-400 rounded-full animate-ping" style={{ animationDelay: '0s' }} />
+                            <div className="absolute top-2 left-1/2 w-1 h-1 bg-indigo-400 rounded-full animate-ping" style={{ animationDelay: '0.5s' }} />
+                            <div className="absolute top-1 left-3/4 w-1 h-1 bg-purple-400 rounded-full animate-ping" style={{ animationDelay: '1s' }} />
+                          </div>
+                        )}
+                        
+                        <div className="relative z-10">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center space-x-2">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shadow-sm relative overflow-hidden ${
+                                isPremiumMethod(freeShippingProgress.method.name)
+                                  ? 'bg-gradient-to-br from-blue-400 via-indigo-500 to-purple-600'
+                                  : 'bg-gradient-to-br from-orange-400 to-orange-600'
+                              }`}>
+                                <Truck className="w-4 h-4 text-white relative z-10" />
+                                {/* Shimmer overlay on the background */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
+                              </div>
+                              <span className="text-sm font-semibold text-gray-900">
+                                Livrare gratuită {freeShippingProgress.method.name}
+                              </span>
+                            </div>
+                            <span className={`text-xs font-bold ${
+                              isPremiumMethod(freeShippingProgress.method.name)
+                                ? 'text-blue-600'
+                                : 'text-orange-600'
+                            }`}>
+                              {freeShippingProgress.progress.toFixed(0)}%
+                            </span>
+                          </div>
+                          
+                          {/* Enhanced Compact Progress Bar */}
+                          <div className="relative mb-2">
+                            <div className="w-full bg-gray-200 rounded-full h-3 shadow-inner">
+                              <div 
+                                className={`h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden ${
+                                  isPremiumMethod(freeShippingProgress.method.name)
+                                    ? 'bg-gradient-to-r from-blue-400 via-indigo-500 to-purple-600'
+                                    : 'bg-gradient-to-r from-orange-400 to-orange-600'
+                                }`}
+                                style={{ width: `${freeShippingProgress.progress}%` }}
+                              >
+                                {/* Shimmer effect */}
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
+                              </div>
+                            </div>
+                            
+                            {/* Animated indicator */}
+                            <div 
+                              className={`absolute top-0 w-4 h-4 rounded-full border-2 border-white shadow-md transform -translate-y-0.5 transition-all duration-1000 ease-out ${
+                                isPremiumMethod(freeShippingProgress.method.name)
+                                  ? 'bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-700'
+                                  : 'bg-gradient-to-br from-orange-500 to-orange-700'
+                              }`}
+                              style={{ left: `calc(${freeShippingProgress.progress}% - 8px)` }}
+                            >
+                              <div className={`w-full h-full rounded-full animate-ping ${
+                                isPremiumMethod(freeShippingProgress.method.name)
+                                  ? 'bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-700'
+                                  : 'bg-gradient-to-br from-orange-500 to-orange-700'
+                              }`} />
+                            </div>
+                          </div>
+                          
+                          <div className="text-center">
+                            <p className="text-xs text-gray-600">
+                              Mai aveți nevoie de <span className={`font-bold ${
+                                isPremiumMethod(freeShippingProgress.method.name)
+                                  ? 'text-blue-600'
+                                  : 'text-orange-600'
+                              }`}>
+                                {formatPrice(freeShippingProgress.remaining)} MDL
+                              </span>
+                            </p>
+                            {freeShippingProgress.progress > 80 && (
+                              <p className={`text-xs font-bold mt-1 animate-pulse ${
+                                isPremiumMethod(freeShippingProgress.method.name)
+                                  ? 'text-blue-600'
+                                  : 'text-orange-600'
+                              }`}>
+                                🎉 Aproape acolo!
+                              </p>
+                            )}
+                          </div>
+                          
+                          {/* Continue Shopping Button */}
+                          <Link
+                            href="/products"
+                            className={`mt-3 w-full inline-flex items-center justify-center px-3 py-2 border text-xs font-medium rounded-md transition-colors ${
+                              isPremiumMethod(freeShippingProgress.method.name)
+                                ? 'border-blue-300 text-blue-700 bg-white hover:bg-blue-50'
+                                : 'border-orange-300 text-orange-700 bg-white hover:bg-orange-50'
+                            }`}
+                          >
+                            <Package className="w-3 h-3 mr-1" />
+                            Continuă cumpărăturile
+                          </Link>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Free Shipping Achieved (Compact) with Animation */}
+                    {freeShippingProgress && freeShippingProgress.isAchieved && (
+                      <motion.div
+                        key="achieved-compact"
+                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.4, ease: "easeInOut" }}
+                        className={`mb-6 p-4 border rounded-lg relative overflow-hidden ${
+                          isPremiumMethod(freeShippingProgress.method.name)
+                            ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'
+                            : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
+                        }`}>
+                        {/* Celebration dots */}
+                        <div className="absolute inset-0">
+                          {isPremiumMethod(freeShippingProgress.method.name) ? (
+                            // Premium sparkles
+                            <>
+                              <div className="absolute top-1 left-1/4 w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                              <div className="absolute top-2 left-1/2 w-1 h-1 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
+                              <div className="absolute top-1 left-3/4 w-1 h-1 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.6s' }} />
+                            </>
+                          ) : (
+                            // Regular confetti
+                            <>
+                              <div className="absolute top-1 left-1/4 w-1 h-1 bg-yellow-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+                              <div className="absolute top-2 left-1/2 w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }} />
+                              <div className="absolute top-1 left-3/4 w-1 h-1 bg-red-400 rounded-full animate-bounce" style={{ animationDelay: '0.6s' }} />
+                            </>
+                          )}
+                        </div>
+                        
+                        <div className="relative z-10">
+                          <div className="flex items-center justify-center space-x-2">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shadow-sm relative overflow-hidden ${
+                              isPremiumMethod(freeShippingProgress.method.name)
+                                ? 'bg-gradient-to-br from-blue-400 via-indigo-500 to-purple-600'
+                                : 'bg-gradient-to-br from-green-400 to-green-600'
+                            }`}>
+                              <CheckCircle className="w-4 h-4 text-white relative z-10" />
+                              {/* Shimmer overlay on the background */}
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
+                            </div>
+                            <div className="text-center">
+                              <span className={`text-sm font-bold ${
+                                isPremiumMethod(freeShippingProgress.method.name)
+                                  ? 'text-blue-800'
+                                  : 'text-green-800'
+                              }`}>
+                                🎉 Livrare gratuită activată!
+                              </span>
+                              <p className={`text-xs ${
+                                isPremiumMethod(freeShippingProgress.method.name)
+                                  ? 'text-blue-600'
+                                  : 'text-green-600'
+                              }`}>
+                                {freeShippingProgress.method.name}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  
+                  {/* Cart Items */}
+                  <div className="space-y-4 mb-6">
+                    {cartItems.map((item) => (
+                      <div key={item.id} className="flex items-center space-x-3">
+                        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                          {item.product?.image ? (
+                            <Image 
+                              src={item.product.image} 
+                              alt={item.product.title || 'Product image'}
+                              width={32}
+                              height={32}
+                              className="object-cover rounded"
+                              onError={(e) => {
+                                // Если изображение не загружается, показываем placeholder
+                                const target = e.target as HTMLImageElement
+                                target.style.display = 'none'
+                                const parent = target.parentElement
+                                if (parent) {
+                                  const placeholder = parent.querySelector('.image-placeholder') as HTMLElement
+                                  if (placeholder) {
+                                    placeholder.style.display = 'flex'
+                                  }
+                                }
+                              }}
+                            />
+                          ) : (
+                            <div className="w-8 h-8 bg-gray-300 rounded flex items-center justify-center">
+                              <Package className="w-4 h-4 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {item.product?.title}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            Cantitate: {item.quantity}
+                          </p>
+                        </div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {formatPrice(typeof item.product?.retail_price === 'string' 
+                            ? parseFloat(item.product.retail_price) * item.quantity
+                            : (item.product?.retail_price || 0) * item.quantity
+                          )} MDL
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Totals */}
+                  <div className="border-t border-gray-200 pt-4 space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Subtotal:</span>
+                      <span className="font-medium">{formatPrice(subtotal)} MDL</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Livrare:</span>
+                      <span className="font-medium">
+                        {shippingCost === 0 ? 'Gratuită' : `${formatPrice(shippingCost)} MDL`}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-lg font-semibold border-t border-gray-200 pt-3">
+                      <span>Total:</span>
+                      <span className="text-orange-600">{formatPrice(total)} MDL</span>
+                    </div>
+                  </div>
+
+                  {/* Shipping Info */}
+                  {selectedShipping && (
+                    <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Truck className="w-4 h-4 text-gray-600" />
+                        <span className="text-sm font-medium text-gray-900">
+                          {selectedShipping.method.name}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        Livrare în {selectedShipping.estimatedDays || 3-5} zile lucrătoare
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Message */}
+            {message && (
+              <div className={`mt-6 p-4 rounded-lg flex items-center space-x-3 ${
+                message.type === 'success' 
+                  ? 'bg-green-50 text-green-800 border border-green-200' 
+                  : 'bg-red-50 text-red-800 border border-red-200'
+              }`}>
+                {message.type === 'success' ? (
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                ) : (
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                )}
+                <span className="text-sm font-medium">{message.text}</span>
+              </div>
+            )}
+          </div>
+        </main>
+
+        <Footer />
+      </div>
+    </AuthGuard>
+  )
+} 

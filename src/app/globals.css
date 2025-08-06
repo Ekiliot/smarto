@@ -1,0 +1,167 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  body {
+    @apply bg-gray-50 text-gray-900;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-orange-500 hover:bg-orange-600 text-white font-medium py-1.5 px-3 rounded-lg transition-colors duration-200 text-sm;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-1.5 px-3 rounded-lg transition-colors duration-200 text-sm;
+  }
+  
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6;
+  }
+  
+  .input-field {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent;
+  }
+}
+
+/* Custom scrollbar styles */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ReactQuill Editor Styles */
+.ql-editor {
+  min-height: 150px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.ql-toolbar {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  border-color: #d1d5db;
+  background-color: #f9fafb;
+}
+
+.ql-container {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  border-color: #d1d5db;
+  background-color: white;
+}
+
+.ql-editor:focus {
+  border-color: #f97316;
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.1);
+}
+
+.ql-toolbar button:hover,
+.ql-toolbar .ql-picker-label:hover {
+  color: #f97316;
+}
+
+.ql-toolbar button:hover .ql-stroke,
+.ql-toolbar .ql-picker-label:hover .ql-stroke {
+  stroke: #f97316;
+}
+
+.ql-toolbar button:hover .ql-fill,
+.ql-toolbar .ql-picker-label:hover .ql-fill {
+  fill: #f97316;
+}
+
+.ql-toolbar .ql-active {
+  color: #f97316;
+}
+
+.ql-toolbar .ql-active .ql-stroke {
+  stroke: #f97316;
+}
+
+.ql-toolbar .ql-active .ql-fill {
+  fill: #f97316;
+}
+
+/* Prose styles for HTML preview */
+.prose {
+  color: #374151;
+}
+
+.prose h1, .prose h2, .prose h3 {
+  color: #111827;
+  font-weight: 600;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.prose h1 {
+  font-size: 1.5em;
+}
+
+.prose h2 {
+  font-size: 1.25em;
+}
+
+.prose h3 {
+  font-size: 1.125em;
+}
+
+.prose p {
+  margin-bottom: 1em;
+}
+
+.prose ul, .prose ol {
+  margin-bottom: 1em;
+  padding-left: 1.5em;
+}
+
+.prose li {
+  margin-bottom: 0.25em;
+}
+
+.prose strong {
+  font-weight: 600;
+  color: #111827;
+}
+
+.prose em {
+  font-style: italic;
+}
+
+.prose a {
+  color: #f97316;
+  text-decoration: underline;
+}
+
+.prose a:hover {
+  color: #ea580c;
+} 
