@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowRight, Zap, Shield, Wifi, Smartphone, ShoppingCart, CreditCard } from 'lucide-react'
+import { ArrowRight, Zap, Shield, Wifi, Smartphone, ShoppingCart, CreditCard, Info } from 'lucide-react'
 
 interface HeroProps {
   cartCount?: number
@@ -43,27 +43,16 @@ export default function Hero({ cartCount = 0 }: HeroProps) {
               </motion.p>
             </div>
 
-            <motion.div 
-              className="hidden md:flex flex-col sm:flex-row gap-4"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-            >
-              <Link href="/products" className="btn-primary inline-flex items-center justify-center group">
-                Explorează produsele
-                <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Link href="/products" className="btn-primary inline-flex items-center justify-center">
+                <Smartphone className="w-5 h-5 mr-2" />
+                Vezi produsele
               </Link>
-              <Link href="/categories" className="btn-secondary inline-flex items-center justify-center">
-                Vezi categorii
+              <Link href="/about" className="btn-secondary inline-flex items-center justify-center">
+                <Info className="w-5 h-5 mr-2" />
+                Află mai multe
               </Link>
-              {cartCount > 0 && (
-                <Link href="/checkout" className="btn-primary inline-flex items-center justify-center bg-green-600 hover:bg-green-700">
-                  <ShoppingCart className="mr-2 w-4 h-4" />
-                  Finalizează comanda ({cartCount})
-                  <CreditCard className="ml-2 w-4 h-4" />
-                </Link>
-              )}
-            </motion.div>
+            </div>
 
             {/* Features - Hidden on mobile */}
             <motion.div 

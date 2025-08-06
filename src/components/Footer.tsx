@@ -41,16 +41,11 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Link-uri rapide</h3>
-            <ul className="space-y-2 text-sm">
+            <h3 className="text-lg font-semibold text-white">Produse</h3>
+            <ul className="space-y-2">
               <li>
                 <Link href="/products" className="text-gray-300 hover:text-white transition-colors">
-                  Produse
-                </Link>
-              </li>
-              <li>
-                <Link href="/categories" className="text-gray-300 hover:text-white transition-colors">
-                  Categorii
+                  Toate produsele
                 </Link>
               </li>
               <li>
@@ -61,11 +56,6 @@ export default function Footer() {
               <li>
                 <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
                   Contact
-                </Link>
-              </li>
-              <li>
-                <Link href="/support" className="text-gray-300 hover:text-white transition-colors">
-                  Suport tehnic
                 </Link>
               </li>
             </ul>
