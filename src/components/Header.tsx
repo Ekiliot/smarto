@@ -63,9 +63,6 @@ export default function Header() {
               <Smartphone className="w-4 h-4 inline mr-1" />
               Produse
             </button>
-            <button onClick={() => handleNavigation('/categories')} className="text-gray-700 hover:text-smarto-600 transition-colors">
-              Categorii
-            </button>
             <button onClick={() => handleNavigation('/about')} className="text-gray-700 hover:text-smarto-600 transition-colors">
               Despre noi
             </button>
@@ -188,15 +185,6 @@ export default function Header() {
               >
                 <Smartphone className="w-4 h-4 mr-2" />
                 Produse
-              </button>
-              <button 
-                onClick={() => {
-                  setIsMenuOpen(false)
-                  handleNavigation('/categories')
-                }}
-                className="text-gray-700 hover:text-smarto-600 transition-colors text-left"
-              >
-                Categorii
               </button>
               <button 
                 onClick={() => {
