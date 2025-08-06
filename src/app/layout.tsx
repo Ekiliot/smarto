@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { SupabaseAuthProvider } from '@/components/SupabaseAuthProvider'
 
@@ -7,8 +7,12 @@ export const metadata: Metadata = {
   description: 'Маркетплейс техники умного дома Smarto в Молдове. Широкий выбор умных устройств для вашего дома.',
   keywords: 'умный дом, техника, Молдова, Smarto, автоматизация, IoT',
   authors: [{ name: 'Smarto Team' }],
-  viewport: 'width=device-width, initial-scale=1',
   robots: 'index, follow',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({
