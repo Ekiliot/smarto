@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth'
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged, User as FirebaseUser, getRedirectResult } from 'firebase/auth'
 import { getAnalytics } from 'firebase/analytics'
 
 const firebaseConfig = {
@@ -32,13 +32,40 @@ googleProvider.setCustomParameters({
   prompt: 'select_account'
 })
 
+// Check if device is mobile
+const isMobile = () => {
+  if (typeof window === 'undefined') return false
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+}
+
 // Firebase auth functions
 export const signInWithGoogle = async () => {
   try {
-    const result = await signInWithPopup(auth, googleProvider)
-    return result
+    // Use redirect for mobile devices, popup for desktop
+    if (isMobile()) {
+      console.log('Using redirect for mobile device')
+      await signInWithRedirect(auth, googleProvider)
+    } else {
+      console.log('Using popup for desktop device')
+      const result = await signInWithPopup(auth, googleProvider)
+      return result
+    }
   } catch (error) {
     console.error('Firebase Google sign in error:', error)
+    throw error
+  }
+}
+
+// Handle redirect result
+export const handleRedirectResult = async () => {
+  try {
+    const result = await getRedirectResult(auth)
+    if (result) {
+      console.log('Redirect result:', result.user.email)
+      return result
+    }
+  } catch (error) {
+    console.error('Error handling redirect result:', error)
     throw error
   }
 }
