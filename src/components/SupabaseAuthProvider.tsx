@@ -34,11 +34,18 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkUser = async () => {
       try {
+        console.log('Checking user session...')
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (error) {
           console.error('Error getting session:', error)
         }
+        
+        console.log('Session check result:', { 
+          hasSession: !!session, 
+          userEmail: session?.user?.email,
+          expiresAt: session?.expires_at 
+        })
         
         if (session?.user) {
           setSupabaseUser(session.user)
@@ -77,6 +84,8 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             const userData = session.user.user_metadata
             const fullName = userData?.name || userData?.first_name || 'User'
             
+            console.log('Creating new user record:', { id: session.user.id, email: session.user.email })
+            
             const { error: insertError } = await supabase
               .from('users')
               .insert([
@@ -91,11 +100,14 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
             if (insertError) {
               console.error('Error creating user record:', insertError)
+            } else {
+              console.log('User record created successfully')
             }
           }
           
           await fetchUserData(session.user.id)
         } else {
+          console.log('User logged out or session expired')
           setSupabaseUser(null)
           setUser(null)
         }

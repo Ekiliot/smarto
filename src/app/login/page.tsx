@@ -57,14 +57,32 @@ function LoginContent() {
     setMessage(null)
 
     try {
+      // Определяем, является ли устройство мобильным
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      
+      // Настраиваем redirect URL в зависимости от устройства
+      const redirectUrl = isMobile 
+        ? `${window.location.origin}/account`
+        : `${window.location.origin}/account`
+
+      console.log('Sending magic link to:', email.trim())
+      console.log('Redirect URL:', redirectUrl)
+      console.log('Is mobile:', isMobile)
+
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {
-          emailRedirectTo: `${window.location.origin}/account`
+          emailRedirectTo: redirectUrl,
+          // Добавляем дополнительные опции для мобильных устройств
+          data: {
+            device_type: isMobile ? 'mobile' : 'desktop',
+            user_agent: navigator.userAgent
+          }
         }
       })
 
       if (error) {
+        console.error('Supabase magic link error:', error)
         throw error
       }
 
@@ -77,19 +95,33 @@ function LoginContent() {
         text: 'Link-ul de conectare a fost trimis pe email! Verificați inbox-ul și spam-ul.' 
       })
       
-      // Сразу открываем почту в новой вкладке
-      if (provider) {
+      // Сразу открываем почту в новой вкладке (только на десктопе)
+      if (provider && !isMobile) {
         setTimeout(() => {
           openEmailProvider(email.trim())
         }, 500) // Небольшая задержка для лучшего UX
       }
       
       setEmail('')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Magic link error:', error)
+      
+      // Более детальная обработка ошибок
+      let errorMessage = 'Eroare la trimiterea link-ului. Încercați din nou.'
+      
+      if (error?.message) {
+        if (error.message.includes('Invalid email')) {
+          errorMessage = 'Adresa de email nu este validă.'
+        } else if (error.message.includes('rate limit')) {
+          errorMessage = 'Prea multe încercări. Așteptați câteva minute.'
+        } else if (error.message.includes('network')) {
+          errorMessage = 'Eroare de rețea. Verificați conexiunea la internet.'
+        }
+      }
+      
       setMessage({ 
         type: 'error', 
-        text: 'Eroare la trimiterea link-ului. Încercați din nou.' 
+        text: errorMessage
       })
     } finally {
       setIsLoading(false)
