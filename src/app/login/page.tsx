@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useAuth } from '@/components/SupabaseAuthProvider'
 import { supabase } from '@/lib/supabase'
 import { getEmailProvider, openEmailProvider } from '@/lib/emailProviders'
@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 
-export default function LoginPage() {
+function LoginContent() {
   const { login } = useAuth()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
@@ -263,5 +263,23 @@ export default function LoginPage() {
       {/* Mobile Navigation */}
       <MobileNav />
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Se încarcă...</h2>
+          <p className="text-gray-600">Se pregătește pagina de conectare...</p>
+        </div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   )
 } 

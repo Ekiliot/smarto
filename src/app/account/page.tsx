@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useAuth } from '@/components/SupabaseAuthProvider'
 import { useRouter, useSearchParams } from 'next/navigation'
 import AuthGuard from '@/components/AuthGuard'
@@ -24,7 +24,7 @@ import {
   ChevronUp
 } from 'lucide-react'
 
-export default function AccountPage() {
+function AccountContent() {
   const { user, supabaseUser, logout, refreshUserData } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -621,5 +621,23 @@ export default function AccountPage() {
         <MobileNav />
       </div>
     </AuthGuard>
+  )
+}
+
+export default function AccountPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <User className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Se încarcă...</h2>
+          <p className="text-gray-600">Se pregătește pagina contului...</p>
+        </div>
+      </div>
+    }>
+      <AccountContent />
+    </Suspense>
   )
 } 
