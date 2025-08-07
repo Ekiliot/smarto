@@ -10,6 +10,7 @@ import MobileBenefitsCarousel from '@/components/MobileBenefitsCarousel'
 import ProductCard from '@/components/ProductCard'
 import { useProducts, useCategories } from '@/hooks/useSupabase'
 import { useCart } from '@/hooks/useCart'
+import { useShipping } from '@/hooks/useShipping'
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth'
 import { 
   Zap, 
@@ -35,6 +36,7 @@ export default function Home() {
   const { products, loading: productsLoading, refresh: refreshProducts } = useProducts()
   const { categories, loading: categoriesLoading, refresh: refreshCategories } = useCategories()
   const { getCartCount, refresh: refreshCart } = useCart()
+  const { refresh: refreshShipping } = useShipping()
   
   // Filter only published products
   const featuredProducts = products.filter(product => product.status === 'published')
@@ -51,12 +53,26 @@ export default function Home() {
   // Принудительная перезагрузка данных при изменении пользователя
   useEffect(() => {
     if (supabaseUser) {
-      console.log('User authenticated, refreshing data...')
+      console.log('User authenticated, refreshing data...', supabaseUser.email)
       refreshProducts()
       refreshCategories()
       refreshCart()
+      refreshShipping()
+    } else {
+      console.log('No user, skipping data refresh')
     }
-  }, [supabaseUser, refreshProducts, refreshCategories, refreshCart])
+  }, [supabaseUser, refreshProducts, refreshCategories, refreshCart, refreshShipping])
+
+  // Отладочная информация о состоянии данных
+  useEffect(() => {
+    console.log('Home page data state:', {
+      productsCount: products.length,
+      categoriesCount: categories.length,
+      featuredProductsCount: featuredProducts.length,
+      cartCount,
+      user: supabaseUser?.email
+    })
+  }, [products, categories, featuredProducts, cartCount, supabaseUser])
   
   // Handle scroll to hide/show checkout panel
   useEffect(() => {
