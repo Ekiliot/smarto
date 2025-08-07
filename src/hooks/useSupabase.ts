@@ -193,18 +193,28 @@ export function useProducts() {
   const [error, setError] = useState<string | null>(null)
 
   const fetchProducts = useCallback(async () => {
+    console.log('=== useProducts: fetchProducts called ===')
     try {
       setLoading(true)
+      console.log('useProducts: Making database query...')
+      
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error('useProducts: Database error:', error)
+        throw error
+      }
+      
+      console.log('useProducts: Query successful, products count:', data?.length || 0)
       setProducts(data || [])
     } catch (err) {
+      console.error('useProducts: Error in fetchProducts:', err)
       setError(err instanceof Error ? err.message : 'Error fetching products')
     } finally {
+      console.log('useProducts: Setting loading to false')
       setLoading(false)
     }
   }, [])
@@ -258,8 +268,14 @@ export function useProducts() {
   }, [fetchProducts])
 
   useEffect(() => {
+    console.log('=== useProducts: useEffect triggered ===')
     fetchProducts()
-  }, [])
+  }, [fetchProducts])
+
+  console.log('=== useProducts: Hook state ===')
+  console.log('Loading:', loading)
+  console.log('Products count:', products.length)
+  console.log('Error:', error)
 
   return {
     products,

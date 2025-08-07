@@ -50,8 +50,20 @@ export default function Home() {
   // Mobile checkout panel visibility state
   const [showCheckoutPanel, setShowCheckoutPanel] = useState(true)
   
+  console.log('=== HOME PAGE: Component render ===')
+  console.log('SupabaseUser:', supabaseUser?.email)
+  console.log('Products loading:', productsLoading)
+  console.log('Categories loading:', categoriesLoading)
+  console.log('Products count:', products.length)
+  console.log('Categories count:', categories.length)
+  console.log('Featured products count:', featuredProducts.length)
+  console.log('Cart count:', cartCount)
+  
   // Принудительная перезагрузка данных при изменении пользователя
   useEffect(() => {
+    console.log('=== HOME PAGE: User effect triggered ===')
+    console.log('SupabaseUser changed:', supabaseUser?.email)
+    
     if (supabaseUser) {
       console.log('User authenticated, refreshing data...', supabaseUser.email)
       refreshProducts()
@@ -65,6 +77,7 @@ export default function Home() {
 
   // Отладочная информация о состоянии данных
   useEffect(() => {
+    console.log('=== HOME PAGE: Data state effect ===')
     console.log('Home page data state:', {
       productsCount: products.length,
       categoriesCount: categories.length,
@@ -76,6 +89,7 @@ export default function Home() {
   
   // Handle scroll to hide/show checkout panel
   useEffect(() => {
+    console.log('=== HOME PAGE: Scroll effect mounted ===')
     let lastScrollY = window.scrollY
     let ticking = false
 
@@ -101,7 +115,10 @@ export default function Home() {
     }
 
     window.addEventListener('scroll', onScroll)
-    return () => window.removeEventListener('scroll', onScroll)
+    return () => {
+      console.log('=== HOME PAGE: Scroll effect cleanup ===')
+      window.removeEventListener('scroll', onScroll)
+    }
   }, [])
 
   // Map category icons
@@ -119,7 +136,11 @@ export default function Home() {
     return products.filter(product => product.category_id === categoryId && product.status === 'published').length
   }
 
+  console.log('=== HOME PAGE: Before render check ===')
+  console.log('Will show loading:', productsLoading || categoriesLoading)
+
   if (productsLoading || categoriesLoading) {
+    console.log('=== HOME PAGE: Showing loading state ===')
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="hidden md:block">
