@@ -4,8 +4,6 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import './globals.css'
-import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import MobileNav from '@/components/MobileNav'
 import { SupabaseAuthProvider } from '@/components/SupabaseAuthProvider'
 
@@ -104,15 +102,9 @@ export default function RootLayout({
       <body>
         <SupabaseAuthProvider>
           <div className="min-h-screen bg-gray-50">
-            <div className="hidden md:block">
-              <Header />
-            </div>
             <main className="pb-16 md:pb-0">
               {children}
             </main>
-            <div className="hidden md:block">
-              <Footer />
-            </div>
             <MobileNav />
           </div>
         </SupabaseAuthProvider>
