@@ -42,13 +42,15 @@ export default function MobileNav() {
               item.active ? 'text-orange-600' : 'text-gray-600'
             }`}
           >
-            <item.icon className="w-6 h-6" />
-            <span className="text-xs mt-1">{item.label}</span>
-            {item.badge && (
-              <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                {item.badge}
-              </span>
-            )}
+            <div className="relative">
+              <item.icon className="w-6 h-6" />
+              {item.badge && (
+                <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                  {item.badge}
+                </span>
+              )}
+            </div>
+            <span className="text-xs mt-1 leading-none">{item.label}</span>
           </button>
         ))}
       </div>

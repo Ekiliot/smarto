@@ -29,14 +29,14 @@ import {
   Star,
   TrendingUp
 } from 'lucide-react'
+import Link from 'next/link'
 
 export default function Home() {
   const router = useRouter()
   const { supabaseUser } = useSupabaseAuth()
-  const { products, loading: productsLoading, refresh: refreshProducts } = useProducts()
-  const { categories, loading: categoriesLoading, refresh: refreshCategories } = useCategories()
-  const { getCartCount, refresh: refreshCart } = useCart()
-  const { refresh: refreshShipping } = useShipping()
+  const { products, loading: productsLoading } = useProducts()
+  const { categories, loading: categoriesLoading } = useCategories()
+  const { getCartCount } = useCart()
   
   // Filter only published products
   const featuredProducts = products.filter(product => product.status === 'published')
@@ -50,46 +50,8 @@ export default function Home() {
   // Mobile checkout panel visibility state
   const [showCheckoutPanel, setShowCheckoutPanel] = useState(true)
   
-  console.log('=== HOME PAGE: Component render ===')
-  console.log('SupabaseUser:', supabaseUser?.email)
-  console.log('Products loading:', productsLoading)
-  console.log('Categories loading:', categoriesLoading)
-  console.log('Products count:', products.length)
-  console.log('Categories count:', categories.length)
-  console.log('Featured products count:', featuredProducts.length)
-  console.log('Cart count:', cartCount)
-  
-  // Принудительная перезагрузка данных при изменении пользователя
-  useEffect(() => {
-    console.log('=== HOME PAGE: User effect triggered ===')
-    console.log('SupabaseUser changed:', supabaseUser?.email)
-    
-    if (supabaseUser) {
-      console.log('User authenticated, refreshing data...', supabaseUser.email)
-      refreshProducts()
-      refreshCategories()
-      refreshCart()
-      refreshShipping()
-    } else {
-      console.log('No user, skipping data refresh')
-    }
-  }, [supabaseUser, refreshProducts, refreshCategories, refreshCart, refreshShipping])
-
-  // Отладочная информация о состоянии данных
-  useEffect(() => {
-    console.log('=== HOME PAGE: Data state effect ===')
-    console.log('Home page data state:', {
-      productsCount: products.length,
-      categoriesCount: categories.length,
-      featuredProductsCount: featuredProducts.length,
-      cartCount,
-      user: supabaseUser?.email
-    })
-  }, [products, categories, featuredProducts, cartCount, supabaseUser])
-  
   // Handle scroll to hide/show checkout panel
   useEffect(() => {
-    console.log('=== HOME PAGE: Scroll effect mounted ===')
     let lastScrollY = window.scrollY
     let ticking = false
 
@@ -115,46 +77,40 @@ export default function Home() {
     }
 
     window.addEventListener('scroll', onScroll)
-    return () => {
-      console.log('=== HOME PAGE: Scroll effect cleanup ===')
-      window.removeEventListener('scroll', onScroll)
-    }
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Map category icons
   const getCategoryIcon = (categoryName: string) => {
-    const name = categoryName.toLowerCase()
-    if (name.includes('iluminat') || name.includes('light')) return Lightbulb
-    if (name.includes('securitate') || name.includes('security')) return Camera
-    if (name.includes('climatic') || name.includes('climate')) return Thermometer
-    if (name.includes('divertisment') || name.includes('entertainment')) return Speaker
-    return Package
+    const iconMap: { [key: string]: any } = {
+      'Iluminat': Lightbulb,
+      'Securitate': Camera,
+      'Climatizare': Thermometer,
+      'Audio': Speaker,
+      'General': Package
+    }
+    return iconMap[categoryName] || Package
   }
 
-  // Get product count for each category
   const getProductCount = (categoryId: string) => {
-    return products.filter(product => product.category_id === categoryId && product.status === 'published').length
+    return products.filter(product => product.category_id === categoryId).length
   }
 
-  console.log('=== HOME PAGE: Before render check ===')
-  console.log('Will show loading:', productsLoading || categoriesLoading)
+  // Show loading state only if both products and categories are loading
+  const isLoading = productsLoading || categoriesLoading
 
-  if (productsLoading || categoriesLoading) {
-    console.log('=== HOME PAGE: Showing loading state ===')
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="hidden md:block">
-          <Header />
-        </div>
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Se încarcă...</p>
+        <Header />
+        <main className="py-4 md:py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <div className="w-8 h-8 bg-orange-500 rounded animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Se încarcă...</p>
+            </div>
           </div>
-        </div>
-        <div className="hidden md:block">
-          <Footer />
-        </div>
+        </main>
+        <Footer />
         <MobileNav />
       </div>
     )
@@ -162,228 +118,153 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="hidden md:block">
-        <Header />
-      </div>
+      <Header />
       
       <main>
-        {/* Mobile Marketplace Header */}
-        <div className="md:hidden bg-white border-b border-gray-200">
-          <div className="px-4 py-4">
-            {/* Search Bar */}
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Căutați produse pentru casa inteligentă..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors"
-              />
-            </div>
-            
-            {/* Quick Actions */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-1 text-sm text-gray-600">
-                  <TrendingUp className="w-4 h-4" />
-                  <span>Trending</span>
-                </div>
-                <div className="flex items-center space-x-1 text-sm text-gray-600">
-                  <Star className="w-4 h-4" />
-                  <span>Top</span>
-                </div>
-              </div>
-              
-              {/* Cart Button with Badge */}
-              {cartCount > 0 && (
-                <button
-                  onClick={() => router.push('/cart')}
-                  className="relative flex items-center space-x-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-                >
-                  <ShoppingCart className="w-4 h-4" />
-                  <span className="text-sm font-medium">Finalizează ({cartCount})</span>
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {cartCount}
-                  </span>
-                </button>
-              )}
-            </div>
-          </div>
+        {/* Hero Section */}
+        <Hero />
+
+        {/* Mobile Benefits Carousel */}
+        <div className="md:hidden">
+          <MobileBenefitsCarousel />
         </div>
 
-        {/* Mobile Categories Section */}
-        {categories.length > 0 && (
-          <section className="md:hidden bg-white py-4">
-            <div className="px-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-gray-900">Categorii</h2>
-                <button
-                  onClick={() => router.push('/products')}
-                  className="flex items-center space-x-1 text-sm text-orange-600 hover:text-orange-700"
-                >
-                  <span>Vezi toate</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-              
-              <div className="flex space-x-4 overflow-x-auto pb-2 scrollbar-hide">
-                {categories.map((category) => {
-                  const IconComponent = getCategoryIcon(category.name)
-                  const productCount = getProductCount(category.id)
-                  
-                  return (
-                    <div
-                      key={category.id}
-                      onClick={() => router.push(`/products?category=${category.id}`)}
-                      className="flex-shrink-0 w-24 text-center cursor-pointer group"
-                    >
-                      <div className="w-16 h-16 bg-gradient-to-br from-orange-100 to-red-100 rounded-xl flex items-center justify-center mx-auto mb-2 group-hover:from-orange-200 group-hover:to-red-200 transition-colors">
-                        <IconComponent className="w-6 h-6 text-orange-600" />
-                      </div>
-                      <h3 className="text-xs font-medium text-gray-900 mb-1 truncate">
-                        {category.name}
-                      </h3>
-                      <p className="text-xs text-gray-500">
-                        {productCount} produse
-                      </p>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </section>
-        )}
-
-        <Hero cartCount={cartCount} />
-        <MobileBenefitsCarousel />
-
-        {/* Desktop Categories Section */}
-        {categories.length > 0 && (
-          <section className="py-16 bg-white hidden md:block">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="text-center mb-12">
-                <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                  Explorează categorii
-                </h2>
-                <p className="text-lg text-gray-600">
-                  Găsește dispozitivele perfecte pentru casa ta inteligentă
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {categories.map((category) => {
-                  const IconComponent = getCategoryIcon(category.name)
-                  const productCount = getProductCount(category.id)
-                  
-                  return (
-                    <div
-                      key={category.id}
-                      className="group bg-gray-50 rounded-xl p-6 hover:bg-orange-50 transition-colors cursor-pointer"
-                    >
-                      <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-orange-200 transition-colors">
-                        <IconComponent className="w-6 h-6 text-orange-600" />
-                      </div>
-                      <h3 className="font-semibold text-gray-900 mb-2">
-                        {category.name}
-                      </h3>
-                      <p className="text-sm text-gray-600 mb-3">
-                        {category.description || 'Descrierea categoriei'}
-                      </p>
-                      <p className="text-sm text-orange-600 font-medium">
-                        {productCount} produse
-                      </p>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Mobile Products Section */}
-        <section className="md:hidden bg-gray-50 py-4">
-          <div className="px-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900">Produse populare</h2>
-              <button
-                onClick={() => router.push('/products')}
-                className="flex items-center space-x-1 text-sm text-orange-600 hover:text-orange-700"
-              >
-                <span>Vezi toate</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            {featuredProducts.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Package className="w-6 h-6 text-gray-400" />
-                </div>
-                <h3 className="text-base font-medium text-gray-900 mb-1">Nu există produse</h3>
-                <p className="text-sm text-gray-500">Produsele vor apărea aici după ce vor fi adăugate.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {featuredProducts.slice(0, 6).map((product) => (
-                  <ProductCard 
-                    key={product.id} 
-                    id={product.id}
-                    title={product.title}
-                    price={product.retail_price}
-                    originalPrice={product.compare_price}
-                    image={product.image || ''}
-                    inStock={product.stock > 0}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Desktop Featured Products Section */}
-        <section className="py-8 md:py-16 bg-gray-50 hidden md:block">
+        {/* Categories Section */}
+        <section className="py-8 md:py-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-8 md:mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 md:mb-4">
-                Produse populare
+            <div className="mb-8">
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+                Categorii
               </h2>
-              <p className="text-base md:text-lg text-gray-600">
-                Cele mai vândute dispozitive inteligente
+              <p className="text-gray-600">
+                Explorați produsele noastre organizate pe categorii
               </p>
             </div>
 
-            {featuredProducts.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Package className="w-8 h-8 text-gray-400" />
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Nu există produse</h3>
-                <p className="text-gray-500">Produsele vor apărea aici după ce vor fi adăugate în admin panel.</p>
+            {/* Desktop Categories Grid */}
+            <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+              {categories.map((category) => {
+                const IconComponent = getCategoryIcon(category.name)
+                const productCount = getProductCount(category.id)
+                
+                return (
+                  <Link
+                    key={category.id}
+                    href={`/products?category=${category.id}`}
+                    className="group bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all duration-200 hover:border-orange-200"
+                  >
+                    <div className="text-center">
+                      <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mx-auto mb-4 group-hover:bg-orange-200 transition-colors">
+                        <IconComponent className="w-6 h-6 text-orange-600" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors">
+                        {category.name}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {productCount} produs{productCount !== 1 ? 'e' : ''}
+                      </p>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+
+            {/* Mobile Categories Scroll */}
+            <div className="md:hidden">
+              <div className="flex space-x-4 overflow-x-auto pb-4 -mx-4 px-4">
+                {categories.map((category) => {
+                  const IconComponent = getCategoryIcon(category.name)
+                  const productCount = getProductCount(category.id)
+                  
+                  return (
+                    <Link
+                      key={category.id}
+                      href={`/products?category=${category.id}`}
+                      className="flex-shrink-0 bg-white rounded-xl shadow-sm border border-gray-200 p-4 w-32 hover:shadow-md transition-all duration-200 hover:border-orange-200"
+                    >
+                      <div className="text-center">
+                        <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-orange-200 transition-colors">
+                          <IconComponent className="w-5 h-5 text-orange-600" />
+                        </div>
+                        <h3 className="text-sm font-semibold text-gray-900 mb-1 group-hover:text-orange-600 transition-colors">
+                          {category.name}
+                        </h3>
+                        <p className="text-xs text-gray-600">
+                          {productCount} produs{productCount !== 1 ? 'e' : ''}
+                        </p>
+                      </div>
+                    </Link>
+                  )
+                })}
               </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
-                {featuredProducts.map((product) => (
-                  <ProductCard 
-                    key={product.id} 
-                    id={product.id}
-                    title={product.title}
-                    price={product.retail_price}
-                    originalPrice={product.compare_price}
-                    image={product.image || ''}
-                    inStock={product.stock > 0}
-                  />
+            </div>
+          </div>
+        </section>
+
+        {/* Featured Products Section */}
+        <section className="py-8 md:py-12 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+                  Produse recomandate
+                </h2>
+                <p className="text-gray-600">
+                  Cele mai populare produse din colecția noastră
+                </p>
+              </div>
+              
+              <Link
+                href="/products"
+                className="hidden md:inline-flex items-center space-x-2 px-4 py-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+              >
+                <span>Vezi toate</span>
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            {/* Desktop Products Grid */}
+            <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {featuredProducts.slice(0, 8).map((product) => (
+                <ProductCard 
+                  key={product.id} 
+                  id={product.id}
+                  title={product.title}
+                  price={product.retail_price}
+                  originalPrice={product.compare_price}
+                  image={product.image || ''}
+                  inStock={product.stock > 0}
+                />
+              ))}
+            </div>
+
+            {/* Mobile Products Scroll */}
+            <div className="md:hidden">
+              <div className="flex space-x-4 overflow-x-auto pb-4 -mx-4 px-4">
+                {featuredProducts.slice(0, 6).map((product) => (
+                  <div key={product.id} className="flex-shrink-0 w-64">
+                    <ProductCard 
+                      id={product.id}
+                      title={product.title}
+                      price={product.retail_price}
+                      originalPrice={product.compare_price}
+                      image={product.image || ''}
+                      inStock={product.stock > 0}
+                    />
+                  </div>
                 ))}
               </div>
-            )}
+            </div>
 
-            <div className="text-center mt-12">
-              <button 
-                onClick={() => router.push('/products')}
-                className="btn-primary"
+            {/* Mobile View All Button */}
+            <div className="md:hidden text-center mt-6">
+              <Link
+                href="/products"
+                className="inline-flex items-center space-x-2 px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
               >
-                Vezi toate produsele
-              </button>
+                <span>Vezi toate produsele</span>
+                <ChevronRight className="w-4 h-4" />
+              </Link>
             </div>
           </div>
         </section>
@@ -455,32 +336,32 @@ export default function Home() {
 
       <Footer />
       
-              {/* Mobile Fixed Checkout Button */}
-        {cartCount > 0 && (
-          <div className={`md:hidden fixed bottom-20 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40 transition-transform duration-300 ${
-            showCheckoutPanel ? 'translate-y-0' : 'translate-y-full'
-          }`}>
-            <div className="px-4 py-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="text-sm text-gray-600">
-                    <span className="font-medium text-gray-900">{cartCount}</span> produse în coș
-                  </div>
+      {/* Mobile Fixed Checkout Button */}
+      {cartCount > 0 && (
+        <div className={`md:hidden fixed bottom-20 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-40 transition-transform duration-300 ${
+          showCheckoutPanel ? 'translate-y-0' : 'translate-y-full'
+        }`}>
+          <div className="px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="text-sm text-gray-600">
+                  <span className="font-medium text-gray-900">{cartCount}</span> produse în coș
                 </div>
-                <button
-                  onClick={() => router.push('/cart')}
-                  className="flex items-center space-x-2 px-6 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors"
-                >
-                  <ShoppingCart className="w-4 h-4" />
-                  <span>Finalizează comanda</span>
-                </button>
               </div>
+              <button
+                onClick={() => router.push('/cart')}
+                className="flex items-center space-x-2 px-4 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors text-sm whitespace-nowrap"
+              >
+                <ShoppingCart className="w-4 h-4" />
+                <span>Finalizează comanda</span>
+              </button>
             </div>
           </div>
-        )}
-        
-        {/* Mobile Navigation */}
-        <MobileNav />
+        </div>
+      )}
+      
+      {/* Mobile Navigation */}
+      <MobileNav />
     </div>
   )
 } 

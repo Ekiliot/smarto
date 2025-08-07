@@ -1052,17 +1052,17 @@ export default function CheckoutPage() {
                   <button
                     type="submit"
                     disabled={isProcessing}
-                    className="w-full flex items-center justify-center space-x-2 px-6 py-4 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-lg"
+                    className="w-full flex items-center justify-center space-x-2 px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-base"
                   >
                     {isProcessing ? (
                       <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        <span>Se procesează plata...</span>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span className="whitespace-nowrap">Se procesează plata...</span>
                       </>
                     ) : (
                       <>
-                        <Lock className="w-5 h-5" />
-                        <span>Finalizează comanda - {formatPrice(total)} MDL</span>
+                        <Lock className="w-4 h-4" />
+                        <span className="whitespace-nowrap">Finalizează comanda - {formatPrice(total)} MDL</span>
                       </>
                     )}
                   </button>
