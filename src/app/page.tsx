@@ -10,6 +10,7 @@ import MobileBenefitsCarousel from '@/components/MobileBenefitsCarousel'
 import ProductCard from '@/components/ProductCard'
 import { useProducts, useCategories } from '@/hooks/useSupabase'
 import { useCart } from '@/hooks/useCart'
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth'
 import { 
   Zap, 
   Shield, 
@@ -30,9 +31,10 @@ import {
 
 export default function Home() {
   const router = useRouter()
-  const { products, loading: productsLoading } = useProducts()
-  const { categories, loading: categoriesLoading } = useCategories()
-  const { getCartCount } = useCart()
+  const { supabaseUser } = useSupabaseAuth()
+  const { products, loading: productsLoading, refresh: refreshProducts } = useProducts()
+  const { categories, loading: categoriesLoading, refresh: refreshCategories } = useCategories()
+  const { getCartCount, refresh: refreshCart } = useCart()
   
   // Filter only published products
   const featuredProducts = products.filter(product => product.status === 'published')
@@ -45,6 +47,16 @@ export default function Home() {
   
   // Mobile checkout panel visibility state
   const [showCheckoutPanel, setShowCheckoutPanel] = useState(true)
+  
+  // Принудительная перезагрузка данных при изменении пользователя
+  useEffect(() => {
+    if (supabaseUser) {
+      console.log('User authenticated, refreshing data...')
+      refreshProducts()
+      refreshCategories()
+      refreshCart()
+    }
+  }, [supabaseUser, refreshProducts, refreshCategories, refreshCart])
   
   // Handle scroll to hide/show checkout panel
   useEffect(() => {
