@@ -62,12 +62,12 @@ export async function GET(request: NextRequest) {
   try {
     console.log('Exchanging code for session...')
     
-    // Exchange the code for a session
+    // Exchange the code for a session with PKCE support
     const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
     
     if (exchangeError) {
       console.error('Error exchanging code for session:', exchangeError)
-      return NextResponse.redirect(new URL(`/auth/error?error=exchange_failed&details=${exchangeError.message}`, request.url))
+      return NextResponse.redirect(new URL(`/auth/error?error=exchange_failed&details=${encodeURIComponent(exchangeError.message)}`, request.url))
     }
 
     // Проверяем, что сессия создана успешно
@@ -85,10 +85,7 @@ export async function GET(request: NextRequest) {
   }
 
   // URL to redirect to after sign in process completes
-  // Для мобильных устройств используем более простой редирект
-  const redirectUrl = isMobile 
-    ? new URL('/account', request.url)
-    : new URL('/account', request.url)
+  const redirectUrl = new URL('/account', request.url)
     
   console.log('Redirecting to:', redirectUrl.toString())
   return NextResponse.redirect(redirectUrl)
