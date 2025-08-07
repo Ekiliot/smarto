@@ -2,17 +2,19 @@
 
 import { useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { useFirebaseAuth } from '@/hooks/useFirebaseAuth'
+import { useSupabaseAuth } from '@/hooks/useSupabaseAuth'
 import { useCart } from '@/hooks/useCart'
 import { useWishlist } from '@/hooks/useSupabase'
 import { Home, ShoppingCart, User, Grid3X3, Menu, X, Heart, LogOut } from 'lucide-react'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
 
 export default function MobileNav() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
-  const { user, loginWithGoogle, logout, isLoading: isFirebaseLoading } = useFirebaseAuth()
+  const { supabaseUser, signOut, isLoading } = useSupabaseAuth()
   const { getCartCount } = useCart()
   const { wishlistItems } = useWishlist()
   const cartCount = getCartCount()
@@ -26,16 +28,27 @@ export default function MobileNav() {
 
   const handleGoogleLogin = async () => {
     try {
-      await loginWithGoogle()
-      setIsMenuOpen(false)
+      setIsGoogleLoading(true)
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+
+      if (error) {
+        console.error('Google login error:', error)
+      }
     } catch (error) {
       console.error('Google login error:', error)
+    } finally {
+      setIsGoogleLoading(false)
     }
   }
 
   const handleLogout = async () => {
     try {
-      await logout()
+      await signOut()
       setIsMenuOpen(false)
     } catch (error) {
       console.error('Error signing out:', error)
@@ -96,11 +109,11 @@ export default function MobileNav() {
               </div>
 
               <div className="p-4 space-y-4">
-                {user ? (
+                {supabaseUser ? (
                   <>
                     <div className="p-4 bg-gray-50 rounded-lg">
-                      <p className="font-medium text-gray-900">{user.name}</p>
-                      <p className="text-sm text-gray-600">{user.email}</p>
+                      <p className="font-medium text-gray-900">{supabaseUser.name}</p>
+                      <p className="text-sm text-gray-600">{supabaseUser.email}</p>
                     </div>
                     <button
                       onClick={handleLogout}
@@ -114,7 +127,7 @@ export default function MobileNav() {
                   <>
                     <button
                       onClick={handleGoogleLogin}
-                      disabled={isFirebaseLoading}
+                      disabled={isGoogleLoading}
                       className="w-full flex items-center justify-center space-x-3 px-4 py-3 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                     >
                       <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -129,7 +142,7 @@ export default function MobileNav() {
                       href="/login"
                       className="block w-full text-center px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium"
                     >
-                      Conectare cu email
+                      Conectare cu Magic Link
                     </Link>
                   </>
                 )}

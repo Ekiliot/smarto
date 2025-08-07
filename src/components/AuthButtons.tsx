@@ -16,7 +16,7 @@ export default function AuthButtons({ onSuccess, onError }: AuthButtonsProps) {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true)
-      logger.info('Starting Google sign in...')
+      logger.info('Starting Google OAuth sign in...')
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -30,15 +30,15 @@ export default function AuthButtons({ onSuccess, onError }: AuthButtonsProps) {
       })
 
       if (error) {
-        logger.error('Google sign in error:', error)
+        logger.error('Google OAuth sign in error:', error)
         onError?.(error.message)
         return
       }
 
-      logger.info('Google sign in initiated successfully')
+      logger.info('Google OAuth sign in initiated successfully')
       onSuccess?.()
     } catch (error) {
-      logger.error('Unexpected error during Google sign in:', error)
+      logger.error('Unexpected error during Google OAuth sign in:', error)
       onError?.(error instanceof Error ? error.message : 'Unexpected error')
     } finally {
       setLoading(false)
@@ -59,6 +59,7 @@ export default function AuthButtons({ onSuccess, onError }: AuthButtonsProps) {
         email,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
+          shouldCreateUser: true, // Создаем пользователя если его нет
         },
       })
 
@@ -72,40 +73,6 @@ export default function AuthButtons({ onSuccess, onError }: AuthButtonsProps) {
       onSuccess?.()
     } catch (error) {
       logger.error('Unexpected error during magic link sign in:', error)
-      onError?.(error instanceof Error ? error.message : 'Unexpected error')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleEmailSignIn = async () => {
-    if (!email) {
-      onError?.('Please enter your email address')
-      return
-    }
-
-    try {
-      setLoading(true)
-      logger.info('Starting email sign in for:', email)
-      
-      const { data, error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          shouldCreateUser: true, // Создаем пользователя если его нет
-        },
-      })
-
-      if (error) {
-        logger.error('Email sign in error:', error)
-        onError?.(error.message)
-        return
-      }
-
-      logger.info('Email sign in initiated successfully')
-      onSuccess?.()
-    } catch (error) {
-      logger.error('Unexpected error during email sign in:', error)
       onError?.(error instanceof Error ? error.message : 'Unexpected error')
     } finally {
       setLoading(false)
@@ -130,7 +97,7 @@ export default function AuthButtons({ onSuccess, onError }: AuthButtonsProps) {
         />
       </div>
 
-      {/* Google Sign In Button */}
+      {/* Google OAuth Button */}
       <button
         onClick={handleGoogleSignIn}
         disabled={loading}
@@ -157,29 +124,33 @@ export default function AuthButtons({ onSuccess, onError }: AuthButtonsProps) {
         {loading ? 'Signing in...' : 'Continue with Google'}
       </button>
 
+      {/* Divider */}
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-300" />
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="px-2 bg-white text-gray-500">or</span>
+        </div>
+      </div>
+
       {/* Magic Link Button */}
       <button
         onClick={handleMagicLinkSignIn}
         disabled={loading || !email}
-        className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full flex items-center justify-center px-4 py-2 bg-orange-500 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
-        {loading ? 'Sending...' : 'Send Magic Link'}
+        {loading ? 'Sending Magic Link...' : 'Send Magic Link'}
       </button>
 
-      {/* Email Sign In Button */}
-      <button
-        onClick={handleEmailSignIn}
-        disabled={loading || !email}
-        className="w-full flex items-center justify-center px-4 py-2 bg-orange-500 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" />
-        </svg>
-        {loading ? 'Signing in...' : 'Sign in with Email'}
-      </button>
+      {/* Info Text */}
+      <div className="text-center text-sm text-gray-600">
+        <p>Choose your preferred sign-in method</p>
+        <p className="mt-1">Magic Link: No password required!</p>
+      </div>
     </div>
   )
 } 
