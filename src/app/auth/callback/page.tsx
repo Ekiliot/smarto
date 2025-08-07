@@ -13,6 +13,18 @@ function AuthCallbackContent() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        // Сначала проверим, есть ли уже активная сессия
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (session) {
+          console.log('Session already exists for user:', session.user.email)
+          setStatus('success')
+          setTimeout(() => {
+            router.push('/account')
+          }, 1000)
+          return
+        }
+
         // Получаем токены из URL fragment (клиентская сторона)
         const hash = window.location.hash.substring(1)
         const params = new URLSearchParams(hash)
@@ -24,7 +36,8 @@ function AuthCallbackContent() {
         console.log('Auth callback processing:', {
           hasAccessToken: !!accessToken,
           hasRefreshToken: !!refreshToken,
-          error
+          error,
+          hash: hash.substring(0, 50) + '...' // Показываем начало hash для отладки
         })
 
         // Если есть ошибка
@@ -68,7 +81,18 @@ function AuthCallbackContent() {
           return
         }
 
-        // Если нет токенов и нет ошибки
+        // Если нет токенов и нет ошибки, но сессия есть
+        const { data: { session: currentSession } } = await supabase.auth.getSession()
+        if (currentSession) {
+          console.log('Session found after retry for user:', currentSession.user.email)
+          setStatus('success')
+          setTimeout(() => {
+            router.push('/account')
+          }, 1000)
+          return
+        }
+
+        // Если нет токенов и нет сессии
         setError('No authorization tokens received')
         setStatus('error')
 
