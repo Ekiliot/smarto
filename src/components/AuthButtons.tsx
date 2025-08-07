@@ -16,12 +16,13 @@ export default function AuthButtons({ onSuccess, onError }: AuthButtonsProps) {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true)
-      logger.info('Starting Google OAuth sign in...')
+      logger.info('Starting Google OAuth sign in with PKCE...')
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          skipBrowserRedirect: false,
         },
       })
 

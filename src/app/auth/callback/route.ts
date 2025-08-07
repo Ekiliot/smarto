@@ -7,9 +7,8 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get('code')
   const error = requestUrl.searchParams.get('error')
   const userAgent = request.headers.get('user-agent') || ''
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(userAgent)
 
-  console.log('Auth callback received:', { code: !!code, error, isMobile, userAgent })
+  console.log('Auth callback received:', { code: !!code, error, userAgent })
 
   // Если есть ошибка, перенаправляем на страницу ошибки
   if (error) {
@@ -34,12 +33,12 @@ export async function GET(request: NextRequest) {
         },
         set(name: string, value: string, options: any) {
           try {
-            // Улучшенные настройки cookies для мобильных устройств
+            // Улучшенные настройки cookies для PKCE
             const cookieOptions = {
               ...options,
               secure: process.env.NODE_ENV === 'production',
               sameSite: 'lax' as const,
-              httpOnly: false, // Разрешаем доступ из JavaScript для мобильных устройств
+              httpOnly: false, // Важно для PKCE
               maxAge: 60 * 60 * 24 * 7, // 7 дней
               path: '/'
             }
@@ -60,7 +59,7 @@ export async function GET(request: NextRequest) {
   )
   
   try {
-    console.log('Exchanging code for session...')
+    console.log('Exchanging code for session with PKCE...')
     
     // Exchange the code for a session with PKCE support
     const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)

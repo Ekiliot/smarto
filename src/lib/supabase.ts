@@ -13,7 +13,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    flowType: 'pkce',
+    flowType: 'implicit', // Временно используем implicit flow для тестирования
     // Добавляем настройки для мобильных устройств
     storage: typeof window !== 'undefined' ? window.localStorage : undefined,
     storageKey: 'smarto-auth-token',
