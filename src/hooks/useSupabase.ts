@@ -192,34 +192,45 @@ export function useProducts() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchProducts = useCallback(async () => {
-    console.log('=== useProducts: fetchProducts called ===')
-    try {
-      setLoading(true)
-      console.log('useProducts: Making database query...')
-      
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .order('created_at', { ascending: false })
+  useEffect(() => {
+    let mounted = true
 
-      if (error) {
-        console.error('useProducts: Database error:', error)
-        throw error
+    const fetchProducts = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (error) {
+          throw error
+        }
+        
+        if (mounted) {
+          setProducts(data || [])
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err instanceof Error ? err.message : 'Error fetching products')
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
       }
-      
-      console.log('useProducts: Query successful, products count:', data?.length || 0)
-      setProducts(data || [])
-    } catch (err) {
-      console.error('useProducts: Error in fetchProducts:', err)
-      setError(err instanceof Error ? err.message : 'Error fetching products')
-    } finally {
-      console.log('useProducts: Setting loading to false')
-      setLoading(false)
+    }
+
+    fetchProducts()
+
+    return () => {
+      mounted = false
     }
   }, [])
 
-  const addProduct = useCallback(async (product: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
+  const addProduct = async (product: Omit<Product, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data, error } = await supabase
         .from('products')
@@ -227,15 +238,24 @@ export function useProducts() {
         .select()
 
       if (error) throw error
-      await fetchProducts()
+      
+      // Refresh products
+      const { data: newData, error: refreshError } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (refreshError) throw refreshError
+      setProducts(newData || [])
+      
       return data?.[0]
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error adding product')
       throw err
     }
-  }, [fetchProducts])
+  }
 
-  const updateProduct = useCallback(async (id: string, updates: Partial<Product>) => {
+  const updateProduct = async (id: string, updates: Partial<Product>) => {
     try {
       const { data, error } = await supabase
         .from('products')
@@ -244,15 +264,24 @@ export function useProducts() {
         .select()
 
       if (error) throw error
-      await fetchProducts()
+      
+      // Refresh products
+      const { data: newData, error: refreshError } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (refreshError) throw refreshError
+      setProducts(newData || [])
+      
       return data?.[0]
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error updating product')
       throw err
     }
-  }, [fetchProducts])
+  }
 
-  const deleteProduct = useCallback(async (id: string) => {
+  const deleteProduct = async (id: string) => {
     try {
       const { error } = await supabase
         .from('products')
@@ -260,22 +289,39 @@ export function useProducts() {
         .eq('id', id)
 
       if (error) throw error
-      await fetchProducts()
+      
+      // Refresh products
+      const { data: newData, error: refreshError } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (refreshError) throw refreshError
+      setProducts(newData || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error deleting product')
       throw err
     }
-  }, [fetchProducts])
+  }
 
-  useEffect(() => {
-    console.log('=== useProducts: useEffect triggered ===')
-    fetchProducts()
-  }, [fetchProducts])
+  const refresh = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false })
 
-  console.log('=== useProducts: Hook state ===')
-  console.log('Loading:', loading)
-  console.log('Products count:', products.length)
-  console.log('Error:', error)
+      if (error) throw error
+      setProducts(data || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error refreshing products')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return {
     products,
@@ -284,7 +330,7 @@ export function useProducts() {
     addProduct,
     updateProduct,
     deleteProduct,
-    refresh: fetchProducts
+    refresh
   }
 }
 
@@ -294,24 +340,43 @@ export function useCategories() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchCategories = useCallback(async () => {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .order('name', { ascending: true })
+  useEffect(() => {
+    let mounted = true
 
-      if (error) throw error
-      setCategories(data || [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error fetching categories')
-    } finally {
-      setLoading(false)
+    const fetchCategories = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        const { data, error } = await supabase
+          .from('categories')
+          .select('*')
+          .order('name', { ascending: true })
+
+        if (error) throw error
+        
+        if (mounted) {
+          setCategories(data || [])
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err instanceof Error ? err.message : 'Error fetching categories')
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    fetchCategories()
+
+    return () => {
+      mounted = false
     }
   }, [])
 
-  const addCategory = useCallback(async (category: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => {
+  const addCategory = async (category: Omit<Category, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const { data, error } = await supabase
         .from('categories')
@@ -319,15 +384,24 @@ export function useCategories() {
         .select()
 
       if (error) throw error
-      await fetchCategories()
+      
+      // Refresh categories
+      const { data: newData, error: refreshError } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name', { ascending: true })
+
+      if (refreshError) throw refreshError
+      setCategories(newData || [])
+      
       return data?.[0]
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error adding category')
       throw err
     }
-  }, [fetchCategories])
+  }
 
-  const updateCategory = useCallback(async (id: string, updates: Partial<Category>) => {
+  const updateCategory = async (id: string, updates: Partial<Category>) => {
     try {
       const { data, error } = await supabase
         .from('categories')
@@ -336,15 +410,24 @@ export function useCategories() {
         .select()
 
       if (error) throw error
-      await fetchCategories()
+      
+      // Refresh categories
+      const { data: newData, error: refreshError } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name', { ascending: true })
+
+      if (refreshError) throw refreshError
+      setCategories(newData || [])
+      
       return data?.[0]
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error updating category')
       throw err
     }
-  }, [fetchCategories])
+  }
 
-  const deleteCategory = useCallback(async (id: string) => {
+  const deleteCategory = async (id: string) => {
     try {
       const { error } = await supabase
         .from('categories')
@@ -352,16 +435,39 @@ export function useCategories() {
         .eq('id', id)
 
       if (error) throw error
-      await fetchCategories()
+      
+      // Refresh categories
+      const { data: newData, error: refreshError } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name', { ascending: true })
+
+      if (refreshError) throw refreshError
+      setCategories(newData || [])
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error deleting category')
       throw err
     }
-  }, [fetchCategories])
+  }
 
-  useEffect(() => {
-    fetchCategories()
-  }, [])
+  const refresh = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name', { ascending: true })
+
+      if (error) throw error
+      setCategories(data || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error refreshing categories')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return {
     categories,
@@ -370,7 +476,7 @@ export function useCategories() {
     addCategory,
     updateCategory,
     deleteCategory,
-    refresh: fetchCategories
+    refresh
   }
 }
 

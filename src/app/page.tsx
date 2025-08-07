@@ -101,7 +101,9 @@ export default function Home() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header />
+        <div className="hidden md:block">
+          <Header />
+        </div>
         <main className="py-4 md:py-8">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
@@ -110,7 +112,9 @@ export default function Home() {
             </div>
           </div>
         </main>
-        <Footer />
+        <div className="hidden md:block">
+          <Footer />
+        </div>
         <MobileNav />
       </div>
     )
@@ -118,7 +122,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <div className="hidden md:block">
+        <Header />
+      </div>
       
       <main>
         {/* Hero Section */}
@@ -334,7 +340,9 @@ export default function Home() {
         </section>
       </main>
 
-      <Footer />
+      <div className="hidden md:block">
+        <Footer />
+      </div>
       
       {/* Mobile Fixed Checkout Button */}
       {cartCount > 0 && (

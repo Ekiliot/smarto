@@ -100,7 +100,7 @@ export default function CartPage() {
     return getSelectedItemsTotal() >= 220 ? 0 : 30
   }
 
-  const getTotalWithShipping = () => {
+  const getTotalWithShipping = (): number => {
     return getSelectedItemsTotal() + getShippingCost()
   }
 
@@ -145,88 +145,23 @@ export default function CartPage() {
       
       <main className="py-4 md:py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                                  {/* Fixed Mobile Header */}
-            {cartItems.length > 0 && (
-              <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-30">
-                <div className="px-4 py-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
-                        <ShoppingCart className="w-4 h-4 text-white" />
-                      </div>
-                      <div>
-                        <h1 className="text-lg font-bold text-gray-900">Coșul meu</h1>
-                        <p className="text-xs text-gray-600">
-                          {cartItems.length} produs{cartItems.length > 1 ? 'e' : ''} în coș
-                        </p>
-                      </div>
+          {/* Fixed Mobile Header */}
+          {cartItems.length > 0 && (
+            <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-30">
+              <div className="px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
+                      <ShoppingCart className="w-4 h-4 text-white" />
                     </div>
-                    
-                    <button
-                      onClick={handleSelectAll}
-                      className="flex items-center space-x-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                    >
-                      {selectAll ? (
-                        <Check className="w-4 h-4 text-orange-600" />
-                      ) : (
-                        <Square className="w-4 h-4 text-gray-400" />
-                      )}
-                      <span className="text-gray-700">
-                        {selectAll ? 'Deselectează tot' : 'Selectează tot'}
-                      </span>
-                    </button>
+                    <div>
+                      <h1 className="text-lg font-bold text-gray-900">Coșul meu</h1>
+                      <p className="text-xs text-gray-600">
+                        {cartItems.length} produs{cartItems.length > 1 ? 'e' : ''} în coș
+                      </p>
+                    </div>
                   </div>
                   
-                  {/* Mobile Free Shipping Progress Bar */}
-                  <div className="mt-3 bg-gray-50 rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center space-x-2">
-                        <Truck className="w-3 h-3 text-green-600" />
-                        <span className="text-xs font-medium text-gray-900">Livrare gratuită</span>
-                      </div>
-                      <span className="text-xs text-gray-600">
-                        {getSelectedItemsTotal() >= 220 ? 'Gratuită' : `${formatPrice(220 - getSelectedItemsTotal())} rămase`}
-                      </span>
-                    </div>
-                    
-                    <div className="w-full bg-gray-200 rounded-full h-1.5">
-                      <div 
-                        className="bg-gradient-to-r from-green-500 to-green-600 h-1.5 rounded-full transition-all duration-300"
-                        style={{ 
-                          width: `${Math.min((getSelectedItemsTotal() / 220) * 100, 100)}%` 
-                        }}
-                      ></div>
-                    </div>
-                    
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>0 MDL</span>
-                      <span>220 MDL</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Desktop Header */}
-            <div className="hidden md:block mb-8">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
-                    <ShoppingCart className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Coșul meu</h1>
-                    <p className="text-gray-600">
-                      {cartItems.length > 0 
-                        ? `${cartItems.length} produs${cartItems.length > 1 ? 'e' : ''} în coș`
-                        : 'Coșul este gol'
-                      }
-                    </p>
-                  </div>
-                </div>
-                
-                {/* Select All Button - Only show if there are items */}
-                {cartItems.length > 0 && (
                   <button
                     onClick={handleSelectAll}
                     className="flex items-center space-x-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
@@ -240,116 +175,133 @@ export default function CartPage() {
                       {selectAll ? 'Deselectează tot' : 'Selectează tot'}
                     </span>
                   </button>
-                )}
-              </div>
-            </div>
-
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-                <span className="text-red-800">Eroare la încărcarea coșului. Încercați din nou.</span>
+                </div>
+                
+                {/* Mobile Free Shipping Progress Bar */}
+                <div className="mt-3 bg-gray-50 rounded-lg p-3">
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span className="text-gray-600">Livrare gratuită</span>
+                    <span className="text-orange-600 font-medium">
+                      {getTotalWithShipping() >= 220 ? '✓ Atins' : `${220 - Number(getTotalWithShipping())} MDL rămase`}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-orange-500 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${Math.min((getTotalWithShipping() / 220) * 100, 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500 mt-2">
+                    <span>0 MDL</span>
+                    <span>220 MDL</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          {cartItems.length === 0 ? (
-            /* Empty Cart */
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 md:p-12">
-              <div className="text-center">
-                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <ShoppingCart className="w-10 h-10 text-gray-400" />
-                </div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">Coșul este gol</h2>
-                <p className="text-gray-600 mb-6">
-                  Nu aveți produse în coș. Explorați produsele noastre și adăugați ceva interesant!
+          {/* Desktop Header */}
+          <div className="hidden md:block mb-8">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center">
+                <ShoppingCart className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Coșul meu</h1>
+                <p className="text-gray-600">
+                  {cartItems.length} produs{cartItems.length > 1 ? 'e' : ''} în coș
                 </p>
-                <Link
-                  href="/products"
-                  className="inline-flex items-center space-x-2 px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium"
-                >
-                  <Package className="w-5 h-5" />
-                  <span>Explorați produsele</span>
-                </Link>
               </div>
             </div>
+          </div>
+
+          {cartItems.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <ShoppingCart className="w-12 h-12 text-gray-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Coșul este gol</h2>
+              <p className="text-gray-600 mb-8">Adăugați produse în coș pentru a continua cumpărăturile</p>
+              <Link
+                href="/products"
+                className="inline-flex items-center space-x-2 px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+              >
+                <Package className="w-5 h-5" />
+                <span>Explorați produsele</span>
+              </Link>
+            </div>
           ) : (
-            /* Cart Items */
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 pb-24 md:pb-0 pt-32 md:pt-0">
-              {/* Cart Items List */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Cart Items */}
               <div className="lg:col-span-2 space-y-4">
                 {cartItems.map((item) => (
-                  <div key={item.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="p-4 md:p-6">
-                      <div className="flex items-start space-x-4">
-                        {/* Checkbox */}
-                        <button
-                          onClick={() => handleSelectItem(item.product.id)}
-                          className="flex-shrink-0 mt-1"
-                        >
-                          {selectedItems.has(item.product.id) ? (
-                            <div className="w-5 h-5 bg-orange-500 rounded border-2 border-orange-500 flex items-center justify-center">
-                              <Check className="w-3 h-3 text-white" />
-                            </div>
-                          ) : (
-                            <div className="w-5 h-5 border-2 border-gray-300 rounded hover:border-orange-400 transition-colors"></div>
-                          )}
-                        </button>
-
-                        {/* Product Image */}
-                        <div className="relative w-20 h-20 md:w-24 md:h-24 flex-shrink-0">
+                  <div key={item.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
+                    <div className="flex items-center space-x-4">
+                      {/* Product Image */}
+                      <div className="flex-shrink-0 w-20 h-20 md:w-24 md:h-24 bg-gray-100 rounded-lg overflow-hidden">
+                        {item.product?.image ? (
                           <Image
-                            src={item.product.image || '/placeholder-product.jpg'}
+                            src={item.product.image}
                             alt={item.product.title}
-                            fill
-                            className="object-cover rounded-lg"
+                            width={96}
+                            height={96}
+                            className="w-full h-full object-cover"
                           />
-                        </div>
-
-                        {/* Product Info */}
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">
-                            {item.product.title}
-                          </h3>
-                          <p className="text-lg font-bold text-orange-600 mb-3">
-                            {formatPrice(item.product.retail_price)}
-                          </p>
-
-                          {/* Quantity Controls */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <button
-                                onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                                disabled={isUpdating === item.id || item.quantity <= 1}
-                                className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                              >
-                                <Minus className="w-4 h-4" />
-                              </button>
-                              <span className="w-12 text-center font-medium">
-                                {isUpdating === item.id ? (
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-500 mx-auto"></div>
-                                ) : (
-                                  item.quantity
-                                )}
-                              </span>
-                              <button
-                                onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                                disabled={isUpdating === item.id}
-                                className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                              >
-                                <Plus className="w-4 h-4" />
-                              </button>
-                            </div>
-
-                            {/* Remove Button */}
-                            <button
-                              onClick={() => handleRemoveItem(item.id)}
-                              disabled={isUpdating === item.id}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="w-8 h-8 text-gray-400" />
                           </div>
+                        )}
+                      </div>
+
+                      {/* Product Info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate">
+                          {item.product?.title || 'Produs indisponibil'}
+                        </h3>
+                        <p className="text-gray-600 mb-3">
+                          {formatPrice(item.product?.retail_price || 0)} MDL
+                        </p>
+                        
+                        {/* Quantity Controls */}
+                        <div className="flex items-center space-x-3">
+                          <button
+                            onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                            disabled={item.quantity <= 1 || isUpdating === item.id}
+                            className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200 transition-colors disabled:opacity-50"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <span className="text-lg font-medium w-12 text-center">
+                            {isUpdating === item.id ? (
+                              <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                            ) : (
+                              item.quantity
+                            )}
+                          </span>
+                          <button
+                            onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                            disabled={isUpdating === item.id}
+                            className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200 transition-colors disabled:opacity-50"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex flex-col items-end space-y-2">
+                        <button
+                          onClick={() => handleRemoveItem(item.id)}
+                          disabled={isUpdating === item.id}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-gray-900">
+                            {formatPrice((item.product?.retail_price || 0) * item.quantity)} MDL
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -357,33 +309,25 @@ export default function CartPage() {
                 ))}
               </div>
 
-              {/* Desktop Order Summary */}
-              <div className="hidden md:block space-y-6">
-                {/* Order Summary Card */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Sumar comandă</h3>
+              {/* Order Summary */}
+              <div className="lg:col-span-1">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-8">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-6">Sumar comandă</h3>
                   
                   {/* Free Shipping Progress */}
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        <Truck className="w-4 h-4 text-green-600" />
-                        <span className="text-sm font-medium text-gray-900">Livrare gratuită</span>
-                      </div>
-                      <span className="text-sm text-gray-600">
-                        {getSelectedItemsTotal() >= 220 ? 'Gratuită' : `${formatPrice(220 - getSelectedItemsTotal())} rămase`}
+                  <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span className="text-gray-600">Livrare gratuită</span>
+                      <span className="text-orange-600 font-medium">
+                        {getTotalWithShipping() >= 220 ? '✓ Atins' : `${220 - Number(getTotalWithShipping())} MDL rămase`}
                       </span>
                     </div>
-                    
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
-                        className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all duration-300"
-                        style={{ 
-                          width: `${Math.min((getSelectedItemsTotal() / 220) * 100, 100)}%` 
-                        }}
-                      ></div>
+                        className="bg-orange-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min((getTotalWithShipping() / 220) * 100, 100)}%` }}
+                      />
                     </div>
-                    
                     <div className="flex justify-between text-xs text-gray-500 mt-2">
                       <span>0 MDL</span>
                       <span>220 MDL</span>
