@@ -333,7 +333,10 @@ export function useUsers() {
     }
   }, [])
 
-  useEffect(() => { loadUsers() }, [loadUsers])
+  // Load users on mount
+  useEffect(() => {
+    loadUsers()
+  }, []) // Remove loadUsers from dependencies to avoid infinite loop
 
   return { users, loading, error, addUser, updateUser, deleteUser, refresh: loadUsers }
 }
@@ -397,7 +400,10 @@ export function useShippingMethods() {
     }
   }, [])
 
-  useEffect(() => { loadShippingMethods() }, [loadShippingMethods])
+  // Load shipping methods on mount
+  useEffect(() => {
+    loadShippingMethods()
+  }, []) // Remove loadShippingMethods from dependencies to avoid infinite loop
 
   return { shippingMethods, loading, error, addShippingMethod, updateShippingMethod, deleteShippingMethod, refresh: loadShippingMethods }
 }
@@ -461,7 +467,10 @@ export function usePaymentMethods() {
     }
   }, [])
 
-  useEffect(() => { loadPaymentMethods() }, [loadPaymentMethods])
+  // Load payment methods on mount
+  useEffect(() => {
+    loadPaymentMethods()
+  }, []) // Remove loadPaymentMethods from dependencies to avoid infinite loop
 
   return { paymentMethods, loading, error, addPaymentMethod, updatePaymentMethod, deletePaymentMethod, refresh: loadPaymentMethods }
 } 

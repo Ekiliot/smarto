@@ -39,11 +39,7 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'ibb.co',
-      },
-      {
-        protocol: 'https',
-        hostname: 'i.ibb.co',
+        hostname: '*.ibb.co',
       },
       {
         protocol: 'https',
@@ -59,11 +55,7 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'drive.google.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'lh3.googleusercontent.com',
+        hostname: '*.googleusercontent.com',
       },
       {
         protocol: 'https',
@@ -72,7 +64,7 @@ const nextConfig = {
     ],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    formats: ['image/webp'],
+    formats: ['image/webp', 'image/avif'],
     minimumCacheTTL: 60,
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",

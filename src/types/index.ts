@@ -113,4 +113,108 @@ export interface WishlistItem {
   product_id: string
   created_at: string
   product?: Product
+}
+
+// Additional types to replace 'any' usage
+
+export interface ShippingAddress {
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  address: string
+  city: string
+  postalCode: string
+  country: string
+}
+
+export interface BillingAddress {
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  address: string
+  city: string
+  postalCode: string
+  country: string
+}
+
+export interface TestResults {
+  [key: string]: {
+    success: boolean
+    message: string
+    data?: any
+  }
+}
+
+export interface CookieOptions {
+  name: string
+  value: string
+  path?: string
+  domain?: string
+  maxAge?: number
+  httpOnly?: boolean
+  secure?: boolean
+  sameSite?: 'strict' | 'lax' | 'none'
+}
+
+export interface TawkAPI {
+  onLoad?: () => void
+  onStatusChange?: (status: string) => void
+  maximize?: () => void
+  minimize?: () => void
+  toggle?: () => void
+  showWidget?: () => void
+  hideWidget?: () => void
+  toggleVisibility?: () => void
+  endChat?: () => void
+}
+
+export interface UserUpdates {
+  name?: string
+  email?: string
+  role?: 'admin' | 'user'
+  is_active?: boolean
+  marketing_consent?: boolean
+  phone?: string
+  address?: string
+}
+
+export interface OrderStatusUpdate {
+  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
+}
+
+export interface PaymentStatusUpdate {
+  payment_status: 'pending' | 'paid' | 'failed' | 'refunded'
+}
+
+export interface ShippingMethodData {
+  name: string
+  type: 'home' | 'pickup' | 'express'
+  min_order_amount: number
+  max_order_amount?: number
+  shipping_cost: number
+  free_shipping_threshold?: number
+  estimated_days?: number
+  description?: string
+  is_active: boolean
+}
+
+export interface PaymentMethodData {
+  name: string
+  type: 'card' | 'cash' | 'bank_transfer' | 'online'
+  fee: number
+  is_active: boolean
+}
+
+export interface CouponType {
+  type: 'percentage' | 'fixed' | 'shipping'
+}
+
+export interface UserType {
+  user_type: 'all' | 'new' | 'existing'
+}
+
+export interface TimeRange {
+  timeRange: '7d' | '30d' | '90d' | '1y'
 } 

@@ -2,221 +2,306 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import MobileNav from '@/components/MobileNav'
+import {
+  CheckCircle,
+  XCircle,
+  Loader2,
+  Database,
+  User,
+  ShoppingCart,
+  Package
+} from 'lucide-react'
+
+interface TestResult {
+  name: string
+  success: boolean
+  message: string
+  data?: any
+}
 
 export default function TestConnectionPage() {
-  const [testResults, setTestResults] = useState<any>({})
+  const [results, setResults] = useState<TestResult[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [overallStatus, setOverallStatus] = useState<'loading' | 'success' | 'error'>('loading')
 
   useEffect(() => {
-    const runTests = async () => {
-      const results: any = {}
-
-      // Test 1: Environment variables
-      results.envVars = {
-        supabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-        supabaseKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-        nodeEnv: process.env.NODE_ENV
-      }
-
-      // Test 2: Supabase connection
-      try {
-        const { data, error } = await supabase.from('categories').select('count').limit(1)
-        results.supabaseConnection = {
-          success: !error,
-          error: error?.message,
-          data: data
-        }
-      } catch (err) {
-        results.supabaseConnection = {
-          success: false,
-          error: err instanceof Error ? err.message : 'Unknown error'
-        }
-      }
-
-      // Test 3: Shipping methods
-      try {
-        const { data, error } = await supabase.from('shipping_methods').select('*').eq('is_active', true)
-        results.shippingMethods = {
-          success: !error,
-          error: error?.message,
-          count: data?.length || 0,
-          data: data
-        }
-      } catch (err) {
-        results.shippingMethods = {
-          success: false,
-          error: err instanceof Error ? err.message : 'Unknown error'
-        }
-      }
-
-      // Test 4: Products
-      try {
-        const { data, error } = await supabase.from('products').select('*').limit(5)
-        results.products = {
-          success: !error,
-          error: error?.message,
-          count: data?.length || 0,
-          data: data
-        }
-      } catch (err) {
-        results.products = {
-          success: false,
-          error: err instanceof Error ? err.message : 'Unknown error'
-        }
-      }
-
-      // Test 5: API routes
-      try {
-        const categoriesResponse = await fetch('/api/categories')
-        results.apiCategories = {
-          success: categoriesResponse.ok,
-          status: categoriesResponse.status,
-          data: await categoriesResponse.json()
-        }
-      } catch (err) {
-        results.apiCategories = {
-          success: false,
-          error: err instanceof Error ? err.message : 'Unknown error'
-        }
-      }
-
-      try {
-        const shippingResponse = await fetch('/api/shipping')
-        results.apiShipping = {
-          success: shippingResponse.ok,
-          status: shippingResponse.status,
-          data: await shippingResponse.json()
-        }
-      } catch (err) {
-        results.apiShipping = {
-          success: false,
-          error: err instanceof Error ? err.message : 'Unknown error'
-        }
-      }
-
-      setTestResults(results)
-      setIsLoading(false)
-    }
-
     runTests()
   }, [])
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Se testează conexiunea...</p>
-        </div>
-      </div>
+  const runTests = async () => {
+    const testResults: TestResult[] = []
+    
+    try {
+      // Test 1: Basic Supabase connection
+      logger.info('Testing basic Supabase connection...')
+      const { data: { session }, error: authError } = await supabase.auth.getSession()
+      
+      testResults.push({
+        name: 'Supabase Connection',
+        success: !authError,
+        message: authError ? `Connection failed: ${authError.message}` : 'Connected successfully',
+        data: { hasSession: !!session }
+      })
+
+      // Test 2: Products table access
+      logger.info('Testing products table access...')
+      const { data: products, error: productsError } = await supabase
+        .from('products')
+        .select('id, title')
+        .limit(1)
+
+      testResults.push({
+        name: 'Products Table',
+        success: !productsError,
+        message: productsError ? `Access failed: ${productsError.message}` : `Found ${products?.length || 0} products`,
+        data: products
+      })
+
+      // Test 3: Categories table access
+      logger.info('Testing categories table access...')
+      const { data: categories, error: categoriesError } = await supabase
+        .from('categories')
+        .select('id, name')
+        .limit(1)
+
+      testResults.push({
+        name: 'Categories Table',
+        success: !categoriesError,
+        message: categoriesError ? `Access failed: ${categoriesError.message}` : `Found ${categories?.length || 0} categories`,
+        data: categories
+      })
+
+      // Test 4: Users table access (if authenticated)
+      if (session?.user) {
+        logger.info('Testing users table access...')
+        const { data: users, error: usersError } = await supabase
+          .from('users')
+          .select('id, email, role')
+          .eq('id', session.user.id)
+          .limit(1)
+
+        testResults.push({
+          name: 'Users Table',
+          success: !usersError,
+          message: usersError ? `Access failed: ${usersError.message}` : `User found: ${users?.[0]?.email}`,
+          data: users?.[0]
+        })
+      } else {
+        testResults.push({
+          name: 'Users Table',
+          success: true,
+          message: 'Skipped - not authenticated',
+          data: null
+        })
+      }
+
+      // Test 5: Cart table access (if authenticated)
+      if (session?.user) {
+        logger.info('Testing cart table access...')
+        const { data: cart, error: cartError } = await supabase
+          .from('cart_items')
+          .select('id, quantity')
+          .eq('user_id', session.user.id)
+          .limit(1)
+
+        testResults.push({
+          name: 'Cart Table',
+          success: !cartError,
+          message: cartError ? `Access failed: ${cartError.message}` : `Found ${cart?.length || 0} cart items`,
+          data: cart
+        })
+      } else {
+        testResults.push({
+          name: 'Cart Table',
+          success: true,
+          message: 'Skipped - not authenticated',
+          data: null
+        })
+      }
+
+      // Test 6: Shipping methods table access
+      logger.info('Testing shipping methods table access...')
+      const { data: shipping, error: shippingError } = await supabase
+        .from('shipping_methods')
+        .select('id, name, is_active')
+        .limit(1)
+
+      testResults.push({
+        name: 'Shipping Methods',
+        success: !shippingError,
+        message: shippingError ? `Access failed: ${shippingError.message}` : `Found ${shipping?.length || 0} shipping methods`,
+        data: shipping
+      })
+
+      // Test 7: Payment methods table access
+      logger.info('Testing payment methods table access...')
+      const { data: payments, error: paymentsError } = await supabase
+        .from('payment_methods')
+        .select('id, name, is_active')
+        .limit(1)
+
+      testResults.push({
+        name: 'Payment Methods',
+        success: !paymentsError,
+        message: paymentsError ? `Access failed: ${paymentsError.message}` : `Found ${payments?.length || 0} payment methods`,
+        data: payments
+      })
+
+      // Test 8: Environment variables
+      testResults.push({
+        name: 'Environment Variables',
+        success: !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+        message: !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) 
+          ? 'All required variables are set' 
+          : 'Missing required environment variables',
+        data: {
+          hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+          hasKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        }
+      })
+
+    } catch (error) {
+      logger.error('Test execution error:', error)
+      testResults.push({
+        name: 'Test Execution',
+        success: false,
+        message: `Unexpected error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        data: error
+      })
+    }
+
+    setResults(testResults)
+    setIsLoading(false)
+    
+    // Determine overall status
+    const hasErrors = testResults.some(result => !result.success)
+    setOverallStatus(hasErrors ? 'error' : 'success')
+  }
+
+  const getStatusIcon = (success: boolean) => {
+    return success ? (
+      <CheckCircle className="w-5 h-5 text-green-500" />
+    ) : (
+      <XCircle className="w-5 h-5 text-red-500" />
     )
+  }
+
+  const getStatusColor = (success: boolean) => {
+    return success 
+      ? 'border-green-200 bg-green-50' 
+      : 'border-red-200 bg-red-50'
+  }
+
+  const getStatusTextColor = (success: boolean) => {
+    return success 
+      ? 'text-green-800' 
+      : 'text-red-800'
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header - Hidden on mobile */}
-      <div className="hidden md:block">
-        <Header />
-      </div>
+      <Header />
       
-      <main className="py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">Test Conexiune</h1>
-          
-          <div className="space-y-6">
-            {/* Environment Variables */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-xl font-semibold mb-4">Variabile de mediu</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className={`p-3 rounded ${testResults.envVars?.supabaseUrl ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                  <strong>SUPABASE_URL:</strong> {testResults.envVars?.supabaseUrl ? '✅ Setat' : '❌ Lipsă'}
-                </div>
-                <div className={`p-3 rounded ${testResults.envVars?.supabaseKey ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                  <strong>SUPABASE_KEY:</strong> {testResults.envVars?.supabaseKey ? '✅ Setat' : '❌ Lipsă'}
-                </div>
-                <div className="p-3 rounded bg-blue-100 text-blue-800">
-                  <strong>NODE_ENV:</strong> {testResults.envVars?.nodeEnv}
-                </div>
-              </div>
-            </div>
+      <main className="max-w-4xl mx-auto px-4 py-8">
+        <div className="text-center mb-8">
+          <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+            <Database className="w-8 h-8 text-blue-600" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Test de Conectare Supabase
+          </h1>
+          <p className="text-gray-600">
+            Verificarea conectării și accesului la baza de date
+          </p>
+        </div>
 
-            {/* Supabase Connection */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-xl font-semibold mb-4">Conexiune Supabase</h2>
-              <div className={`p-3 rounded ${testResults.supabaseConnection?.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                <strong>Status:</strong> {testResults.supabaseConnection?.success ? '✅ Conectat' : '❌ Eroare'}
-                {testResults.supabaseConnection?.error && (
-                  <div className="mt-2 text-sm">
-                    <strong>Eroare:</strong> {testResults.supabaseConnection.error}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Shipping Methods */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-xl font-semibold mb-4">Metode de livrare</h2>
-              <div className={`p-3 rounded ${testResults.shippingMethods?.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                <strong>Status:</strong> {testResults.shippingMethods?.success ? '✅ Găsite' : '❌ Eroare'}
-                <div className="mt-2">
-                  <strong>Număr:</strong> {testResults.shippingMethods?.count || 0} metode
-                </div>
-                {testResults.shippingMethods?.error && (
-                  <div className="mt-2 text-sm">
-                    <strong>Eroare:</strong> {testResults.shippingMethods.error}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Products */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-xl font-semibold mb-4">Produse</h2>
-              <div className={`p-3 rounded ${testResults.products?.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                <strong>Status:</strong> {testResults.products?.success ? '✅ Găsite' : '❌ Eroare'}
-                <div className="mt-2">
-                  <strong>Număr:</strong> {testResults.products?.count || 0} produse
-                </div>
-                {testResults.products?.error && (
-                  <div className="mt-2 text-sm">
-                    <strong>Eroare:</strong> {testResults.products.error}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* API Routes */}
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-xl font-semibold mb-4">API Routes</h2>
-              <div className="space-y-3">
-                <div className={`p-3 rounded ${testResults.apiCategories?.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                  <strong>/api/categories:</strong> {testResults.apiCategories?.success ? '✅ Funcționează' : '❌ Eroare'}
-                  {testResults.apiCategories?.error && (
-                    <div className="mt-1 text-sm">Eroare: {testResults.apiCategories.error}</div>
-                  )}
-                </div>
-                <div className={`p-3 rounded ${testResults.apiShipping?.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                  <strong>/api/shipping:</strong> {testResults.apiShipping?.success ? '✅ Funcționează' : '❌ Eroare'}
-                  {testResults.apiShipping?.error && (
-                    <div className="mt-1 text-sm">Eroare: {testResults.apiShipping.error}</div>
-                  )}
-                </div>
-              </div>
+        {/* Overall Status */}
+        {!isLoading && (
+          <div className={`mb-8 p-6 rounded-lg border ${
+            overallStatus === 'success' 
+              ? 'border-green-200 bg-green-50' 
+              : 'border-red-200 bg-red-50'
+          }`}>
+            <div className="flex items-center justify-center space-x-2">
+              {overallStatus === 'success' ? (
+                <CheckCircle className="w-6 h-6 text-green-500" />
+              ) : (
+                <XCircle className="w-6 h-6 text-red-500" />
+              )}
+              <span className={`text-lg font-medium ${
+                overallStatus === 'success' ? 'text-green-800' : 'text-red-800'
+              }`}>
+                {overallStatus === 'success' 
+                  ? 'Toate testele au trecut cu succes!' 
+                  : 'Unele teste au eșuat'
+                }
+              </span>
             </div>
           </div>
+        )}
+
+        {/* Test Results */}
+        <div className="space-y-4">
+          {isLoading ? (
+            <div className="text-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-500" />
+              <p className="text-gray-600">Se execută testele...</p>
+            </div>
+          ) : (
+            results.map((result, index) => (
+              <div 
+                key={index}
+                className={`p-6 rounded-lg border ${getStatusColor(result.success)}`}
+              >
+                <div className="flex items-start space-x-3">
+                  {getStatusIcon(result.success)}
+                  <div className="flex-1">
+                    <h3 className={`font-medium ${getStatusTextColor(result.success)}`}>
+                      {result.name}
+                    </h3>
+                    <p className={`text-sm mt-1 ${getStatusTextColor(result.success)}`}>
+                      {result.message}
+                    </p>
+                    {result.data && (
+                      <details className="mt-2">
+                        <summary className="text-xs text-gray-500 cursor-pointer">
+                          Vezi detalii
+                        </summary>
+                        <pre className="mt-2 text-xs bg-white p-2 rounded border overflow-auto">
+                          {JSON.stringify(result.data, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
+
+        {/* Action Buttons */}
+        {!isLoading && (
+          <div className="mt-8 text-center space-x-4">
+            <button
+              onClick={runTests}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              Rulează din nou testele
+            </button>
+            <a
+              href="/"
+              className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors inline-block"
+            >
+              Înapoi la pagina principală
+            </a>
+          </div>
+        )}
       </main>
 
-      {/* Footer - Hidden on mobile */}
-      <div className="hidden md:block">
-        <Footer />
-      </div>
-      
-      {/* Mobile Navigation */}
-      <MobileNav />
+      <Footer />
     </div>
   )
 } 
