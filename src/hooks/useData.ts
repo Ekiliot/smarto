@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { api, Product, Category, MetadataItem, User, ShippingMethod, PaymentMethod } from '@/lib/database'
 
 // Products hook
@@ -7,20 +7,36 @@ export function useProducts() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadProducts = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const data = await api.getProducts()
-      setProducts(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load products')
-    } finally {
-      setLoading(false)
+  useEffect(() => {
+    let mounted = true
+
+    const loadProducts = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const data = await api.getProducts()
+        if (mounted) {
+          setProducts(data)
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err instanceof Error ? err.message : 'Failed to load products')
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadProducts()
+
+    return () => {
+      mounted = false
     }
   }, [])
 
-  const addProduct = useCallback(async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addProduct = async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       const newProduct = await api.addProduct(product)
       setProducts(prev => [...prev, newProduct])
@@ -29,9 +45,9 @@ export function useProducts() {
       setError(err instanceof Error ? err.message : 'Failed to add product')
       throw err
     }
-  }, [])
+  }
 
-  const updateProduct = useCallback(async (id: string, updates: Partial<Product>) => {
+  const updateProduct = async (id: string, updates: Partial<Product>) => {
     try {
       const updatedProduct = await api.updateProduct(id, updates)
       if (updatedProduct) {
@@ -43,9 +59,9 @@ export function useProducts() {
       setError(err instanceof Error ? err.message : 'Failed to update product')
       throw err
     }
-  }, [])
+  }
 
-  const deleteProduct = useCallback(async (id: string) => {
+  const deleteProduct = async (id: string) => {
     try {
       const success = await api.deleteProduct(id)
       if (success) {
@@ -57,11 +73,20 @@ export function useProducts() {
       setError(err instanceof Error ? err.message : 'Failed to delete product')
       throw err
     }
-  }, [])
+  }
 
-  useEffect(() => {
-    loadProducts()
-  }, []) // Remove loadProducts from dependencies to avoid infinite loop
+  const refresh = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await api.getProducts()
+      setProducts(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load products')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return {
     products,
@@ -70,7 +95,7 @@ export function useProducts() {
     addProduct,
     updateProduct,
     deleteProduct,
-    refresh: loadProducts
+    refresh
   }
 }
 
@@ -80,20 +105,36 @@ export function useCategories() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadCategories = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const data = await api.getCategories()
-      setCategories(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load categories')
-    } finally {
-      setLoading(false)
+  useEffect(() => {
+    let mounted = true
+
+    const loadCategories = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const data = await api.getCategories()
+        if (mounted) {
+          setCategories(data)
+        }
+      } catch (err) {
+        if (mounted) {
+          setError(err instanceof Error ? err.message : 'Failed to load categories')
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadCategories()
+
+    return () => {
+      mounted = false
     }
   }, [])
 
-  const addCategory = useCallback(async (category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addCategory = async (category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       const newCategory = await api.addCategory(category)
       setCategories(prev => [...prev, newCategory])
@@ -102,9 +143,9 @@ export function useCategories() {
       setError(err instanceof Error ? err.message : 'Failed to add category')
       throw err
     }
-  }, [])
+  }
 
-  const updateCategory = useCallback(async (id: string, updates: Partial<Category>) => {
+  const updateCategory = async (id: string, updates: Partial<Category>) => {
     try {
       const updatedCategory = await api.updateCategory(id, updates)
       if (updatedCategory) {
@@ -116,9 +157,9 @@ export function useCategories() {
       setError(err instanceof Error ? err.message : 'Failed to update category')
       throw err
     }
-  }, [])
+  }
 
-  const deleteCategory = useCallback(async (id: string) => {
+  const deleteCategory = async (id: string) => {
     try {
       const success = await api.deleteCategory(id)
       if (success) {
@@ -130,11 +171,20 @@ export function useCategories() {
       setError(err instanceof Error ? err.message : 'Failed to delete category')
       throw err
     }
-  }, [])
+  }
 
-  useEffect(() => {
-    loadCategories()
-  }, []) // Remove loadCategories from dependencies to avoid infinite loop
+  const refresh = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await api.getCategories()
+      setCategories(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load categories')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return {
     categories,
@@ -143,7 +193,7 @@ export function useCategories() {
     addCategory,
     updateCategory,
     deleteCategory,
-    refresh: loadCategories
+    refresh
   }
 }
 
@@ -153,7 +203,7 @@ export function useMetadata() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadMetadata = useCallback(async () => {
+  const loadMetadata = async () => {
     try {
       setLoading(true)
       setError(null)
@@ -164,9 +214,9 @@ export function useMetadata() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }
 
-  const addMetadata = useCallback(async (metadataItem: Omit<MetadataItem, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addMetadata = async (metadataItem: Omit<MetadataItem, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       const newMetadata = await api.addMetadata(metadataItem)
       setMetadata(prev => [...prev, newMetadata])
@@ -175,9 +225,9 @@ export function useMetadata() {
       setError(err instanceof Error ? err.message : 'Failed to add metadata')
       throw err
     }
-  }, [])
+  }
 
-  const updateMetadata = useCallback(async (id: string, updates: Partial<MetadataItem>) => {
+  const updateMetadata = async (id: string, updates: Partial<MetadataItem>) => {
     try {
       const updatedMetadata = await api.updateMetadata(id, updates)
       if (updatedMetadata) {
@@ -189,9 +239,9 @@ export function useMetadata() {
       setError(err instanceof Error ? err.message : 'Failed to update metadata')
       throw err
     }
-  }, [])
+  }
 
-  const deleteMetadata = useCallback(async (id: string) => {
+  const deleteMetadata = async (id: string) => {
     try {
       const success = await api.deleteMetadata(id)
       if (success) {
@@ -203,7 +253,7 @@ export function useMetadata() {
       setError(err instanceof Error ? err.message : 'Failed to delete metadata')
       throw err
     }
-  }, [])
+  }
 
   useEffect(() => {
     loadMetadata()
@@ -225,7 +275,7 @@ export function useBackup() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const exportData = useCallback(async () => {
+  const exportData = async () => {
     try {
       setLoading(true)
       setError(null)
@@ -237,9 +287,9 @@ export function useBackup() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }
 
-  const importData = useCallback(async (jsonData: string) => {
+  const importData = async (jsonData: string) => {
     try {
       setLoading(true)
       setError(null)
@@ -250,9 +300,9 @@ export function useBackup() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }
 
-  const clearAll = useCallback(async () => {
+  const clearAll = async () => {
     try {
       setLoading(true)
       setError(null)
@@ -263,7 +313,7 @@ export function useBackup() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }
 
   return {
     loading,
@@ -280,7 +330,7 @@ export function useUsers() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadUsers = useCallback(async () => {
+  const loadUsers = async () => {
     try {
       setLoading(true)
       setError(null)
@@ -291,9 +341,9 @@ export function useUsers() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }
 
-  const addUser = useCallback(async (user: Omit<User, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addUser = async (user: Omit<User, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       setError(null)
       const newUser = await api.addUser(user)
@@ -303,9 +353,9 @@ export function useUsers() {
       setError(err instanceof Error ? err.message : 'Failed to add user')
       throw err
     }
-  }, [])
+  }
 
-  const updateUser = useCallback(async (id: string, updates: Partial<User>) => {
+  const updateUser = async (id: string, updates: Partial<User>) => {
     try {
       setError(null)
       const updatedUser = await api.updateUser(id, updates)
@@ -317,9 +367,9 @@ export function useUsers() {
       setError(err instanceof Error ? err.message : 'Failed to update user')
       throw err
     }
-  }, [])
+  }
 
-  const deleteUser = useCallback(async (id: string) => {
+  const deleteUser = async (id: string) => {
     try {
       setError(null)
       const success = await api.deleteUser(id)
@@ -331,7 +381,7 @@ export function useUsers() {
       setError(err instanceof Error ? err.message : 'Failed to delete user')
       throw err
     }
-  }, [])
+  }
 
   // Load users on mount
   useEffect(() => {
@@ -347,7 +397,7 @@ export function useShippingMethods() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadShippingMethods = useCallback(async () => {
+  const loadShippingMethods = async () => {
     try {
       setLoading(true)
       setError(null)
@@ -358,9 +408,9 @@ export function useShippingMethods() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }
 
-  const addShippingMethod = useCallback(async (method: Omit<ShippingMethod, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addShippingMethod = async (method: Omit<ShippingMethod, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       setError(null)
       const newMethod = await api.addShippingMethod(method)
@@ -370,9 +420,9 @@ export function useShippingMethods() {
       setError(err instanceof Error ? err.message : 'Failed to add shipping method')
       throw err
     }
-  }, [])
+  }
 
-  const updateShippingMethod = useCallback(async (id: string, updates: Partial<ShippingMethod>) => {
+  const updateShippingMethod = async (id: string, updates: Partial<ShippingMethod>) => {
     try {
       setError(null)
       const updatedMethod = await api.updateShippingMethod(id, updates)
@@ -384,9 +434,9 @@ export function useShippingMethods() {
       setError(err instanceof Error ? err.message : 'Failed to update shipping method')
       throw err
     }
-  }, [])
+  }
 
-  const deleteShippingMethod = useCallback(async (id: string) => {
+  const deleteShippingMethod = async (id: string) => {
     try {
       setError(null)
       const success = await api.deleteShippingMethod(id)
@@ -398,7 +448,7 @@ export function useShippingMethods() {
       setError(err instanceof Error ? err.message : 'Failed to delete shipping method')
       throw err
     }
-  }, [])
+  }
 
   // Load shipping methods on mount
   useEffect(() => {
@@ -414,7 +464,7 @@ export function usePaymentMethods() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadPaymentMethods = useCallback(async () => {
+  const loadPaymentMethods = async () => {
     try {
       setLoading(true)
       setError(null)
@@ -425,9 +475,9 @@ export function usePaymentMethods() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }
 
-  const addPaymentMethod = useCallback(async (method: Omit<PaymentMethod, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addPaymentMethod = async (method: Omit<PaymentMethod, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       setError(null)
       const newMethod = await api.addPaymentMethod(method)
@@ -437,9 +487,9 @@ export function usePaymentMethods() {
       setError(err instanceof Error ? err.message : 'Failed to add payment method')
       throw err
     }
-  }, [])
+  }
 
-  const updatePaymentMethod = useCallback(async (id: string, updates: Partial<PaymentMethod>) => {
+  const updatePaymentMethod = async (id: string, updates: Partial<PaymentMethod>) => {
     try {
       setError(null)
       const updatedMethod = await api.updatePaymentMethod(id, updates)
@@ -451,9 +501,9 @@ export function usePaymentMethods() {
       setError(err instanceof Error ? err.message : 'Failed to update payment method')
       throw err
     }
-  }, [])
+  }
 
-  const deletePaymentMethod = useCallback(async (id: string) => {
+  const deletePaymentMethod = async (id: string) => {
     try {
       setError(null)
       const success = await api.deletePaymentMethod(id)
@@ -465,7 +515,7 @@ export function usePaymentMethods() {
       setError(err instanceof Error ? err.message : 'Failed to delete payment method')
       throw err
     }
-  }, [])
+  }
 
   // Load payment methods on mount
   useEffect(() => {

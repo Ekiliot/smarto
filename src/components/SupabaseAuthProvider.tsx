@@ -33,7 +33,6 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   // Получаем данные пользователя из базы данных
   const fetchUserData = useCallback(async (userId: string) => {
     try {
-      console.log('=== AUTH: Fetching user data for:', userId)
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -46,7 +45,6 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data) {
-        console.log('AUTH: User data fetched:', { email: data.email, role: data.role })
         setUser({
           id: data.id,
           email: data.email,
@@ -60,20 +58,23 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Проверяем текущую сессию при загрузке
+  // Инициализация и слушатель изменений аутентификации
   useEffect(() => {
-    console.log('=== AUTH: Provider mounted ===')
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('=== AUTH: Auth state change ===')
-        console.log('Event:', event)
-        console.log('Session user:', session?.user?.email)
+    let mounted = true
+
+    const initializeAuth = async () => {
+      try {
+        // Получаем текущую сессию
+        const { data: { session }, error } = await supabase.auth.getSession()
         
-        if (session?.user) {
+        if (error) {
+          console.error('AUTH: Error getting session:', error)
+        }
+
+        if (mounted && session?.user) {
           setSupabaseUser(session.user)
           
-          // Check if user exists in users table
+          // Проверяем/создаем пользователя в базе
           const { data: existingUser, error: userError } = await supabase
             .from('users')
             .select('*')
@@ -85,11 +86,8 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
           }
 
           if (!existingUser) {
-            // Create user record if doesn't exist
             const userData = session.user.user_metadata
             const fullName = userData?.name || userData?.first_name || 'User'
-            
-            console.log('AUTH: Creating new user record:', { id: session.user.id, email: session.user.email })
             
             const { error: insertError } = await supabase
               .from('users')
@@ -105,30 +103,44 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
             if (insertError) {
               console.error('AUTH: Error creating user record:', insertError)
-            } else {
-              console.log('AUTH: User record created successfully')
             }
           }
           
           await fetchUserData(session.user.id)
+        }
+      } catch (error) {
+        console.error('AUTH: Error in initializeAuth:', error)
+      } finally {
+        if (mounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    initializeAuth()
+
+    // Слушаем изменения аутентификации
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return
+
+        if (session?.user) {
+          setSupabaseUser(session.user)
+          await fetchUserData(session.user.id)
         } else {
-          console.log('AUTH: User logged out or session expired')
           setSupabaseUser(null)
           setUser(null)
         }
-        setIsLoading(false)
       }
     )
 
     return () => {
-      console.log('AUTH: Cleaning up subscription')
+      mounted = false
       subscription.unsubscribe()
     }
   }, [fetchUserData])
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // This function is now deprecated since we use Magic Link
-    // Keeping for backward compatibility
     console.warn('Login with password is deprecated. Use Magic Link instead.')
     return false
   }
@@ -150,8 +162,6 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   }
 
   const register = async (email: string, password: string, name: string): Promise<boolean> => {
-    // This function is now deprecated since we use Magic Link
-    // Keeping for backward compatibility
     console.warn('Register with password is deprecated. Use Magic Link instead.')
     return false
   }
