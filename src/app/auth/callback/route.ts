@@ -6,9 +6,8 @@ export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
   const error = requestUrl.searchParams.get('error')
-  const userAgent = request.headers.get('user-agent') || ''
 
-  console.log('Auth callback received:', { code: !!code, error, userAgent })
+  console.log('Auth callback received:', { code: !!code, error })
 
   // Если есть ошибка, перенаправляем на страницу ошибки
   if (error) {
@@ -33,16 +32,7 @@ export async function GET(request: NextRequest) {
         },
         set(name: string, value: string, options: any) {
           try {
-            // Улучшенные настройки cookies для PKCE
-            const cookieOptions = {
-              ...options,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax' as const,
-              httpOnly: false, // Важно для PKCE
-              maxAge: 60 * 60 * 24 * 7, // 7 дней
-              path: '/'
-            }
-            cookieStore.set({ name, value, ...cookieOptions })
+            cookieStore.set({ name, value, ...options })
           } catch (error) {
             console.error('Error setting cookie:', error)
           }
@@ -59,9 +49,9 @@ export async function GET(request: NextRequest) {
   )
   
   try {
-    console.log('Exchanging code for session with PKCE...')
+    console.log('Exchanging code for session...')
     
-    // Exchange the code for a session with PKCE support
+    // Exchange the code for a session
     const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
     
     if (exchangeError) {
@@ -76,7 +66,6 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('Session created successfully for user:', data.user?.email)
-    console.log('Session expires at:', data.session.expires_at)
     
   } catch (error) {
     console.error('Unexpected error during auth callback:', error)

@@ -7,28 +7,18 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-// Создаем клиент с улучшенными настройками для мобильных устройств
+// Создаем клиент с базовыми настройками
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    flowType: 'implicit', // Временно используем implicit flow для тестирования
-    // Добавляем настройки для мобильных устройств
     storage: typeof window !== 'undefined' ? window.localStorage : undefined,
     storageKey: 'smarto-auth-token',
-    // Улучшенные настройки для мобильных устройств
-    debug: process.env.NODE_ENV === 'development'
   },
   global: {
     headers: {
       'X-Client-Info': 'smarto-web'
-    }
-  },
-  // Настройки для лучшей производительности
-  realtime: {
-    params: {
-      eventsPerSecond: 10
     }
   }
 }) 
