@@ -61,7 +61,7 @@ export function useProducts() {
 
   useEffect(() => {
     loadProducts()
-  }, [loadProducts])
+  }, []) // Remove loadProducts from dependencies to avoid infinite loop
 
   return {
     products,
@@ -134,7 +134,7 @@ export function useCategories() {
 
   useEffect(() => {
     loadCategories()
-  }, [loadCategories])
+  }, []) // Remove loadCategories from dependencies to avoid infinite loop
 
   return {
     categories,

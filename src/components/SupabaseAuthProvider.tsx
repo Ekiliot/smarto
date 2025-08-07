@@ -30,40 +30,45 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Получаем данные пользователя из базы данных
+  const fetchUserData = useCallback(async (userId: string) => {
+    try {
+      console.log('=== AUTH: Fetching user data for:', userId)
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (error) {
+        console.error('AUTH: Error fetching user data:', error)
+        return
+      }
+
+      if (data) {
+        console.log('AUTH: User data fetched:', { email: data.email, role: data.role })
+        setUser({
+          id: data.id,
+          email: data.email,
+          name: data.name,
+          role: data.role,
+          isActive: data.is_active
+        })
+      }
+    } catch (error) {
+      console.error('AUTH: Error in fetchUserData:', error)
+    }
+  }, [])
+
   // Проверяем текущую сессию при загрузке
   useEffect(() => {
-    const checkUser = async () => {
-      try {
-        console.log('Checking user session...')
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
-        if (error) {
-          console.error('Error getting session:', error)
-        }
-        
-        console.log('Session check result:', { 
-          hasSession: !!session, 
-          userEmail: session?.user?.email,
-          expiresAt: session?.expires_at 
-        })
-        
-        if (session?.user) {
-          setSupabaseUser(session.user)
-          await fetchUserData(session.user.id)
-        }
-      } catch (error) {
-        console.error('Error checking session:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    checkUser()
-
-    // Слушаем изменения аутентификации
+    console.log('=== AUTH: Provider mounted ===')
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.email)
+        console.log('=== AUTH: Auth state change ===')
+        console.log('Event:', event)
+        console.log('Session user:', session?.user?.email)
         
         if (session?.user) {
           setSupabaseUser(session.user)
@@ -76,7 +81,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             .single()
 
           if (userError && userError.code !== 'PGRST116') {
-            console.error('Error checking existing user:', userError)
+            console.error('AUTH: Error checking existing user:', userError)
           }
 
           if (!existingUser) {
@@ -84,7 +89,7 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
             const userData = session.user.user_metadata
             const fullName = userData?.name || userData?.first_name || 'User'
             
-            console.log('Creating new user record:', { id: session.user.id, email: session.user.email })
+            console.log('AUTH: Creating new user record:', { id: session.user.id, email: session.user.email })
             
             const { error: insertError } = await supabase
               .from('users')
@@ -99,15 +104,15 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
               ])
 
             if (insertError) {
-              console.error('Error creating user record:', insertError)
+              console.error('AUTH: Error creating user record:', insertError)
             } else {
-              console.log('User record created successfully')
+              console.log('AUTH: User record created successfully')
             }
           }
           
           await fetchUserData(session.user.id)
         } else {
-          console.log('User logged out or session expired')
+          console.log('AUTH: User logged out or session expired')
           setSupabaseUser(null)
           setUser(null)
         }
@@ -115,36 +120,11 @@ export function SupabaseAuthProvider({ children }: { children: ReactNode }) {
       }
     )
 
-    return () => subscription.unsubscribe()
-  }, [])
-
-  // Получаем данные пользователя из базы данных
-  const fetchUserData = useCallback(async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single()
-
-      if (error) {
-        console.error('Error fetching user data:', error)
-        return
-      }
-
-      if (data) {
-        setUser({
-          id: data.id,
-          email: data.email,
-          name: data.name,
-          role: data.role,
-          isActive: data.is_active
-        })
-      }
-    } catch (error) {
-      console.error('Error in fetchUserData:', error)
+    return () => {
+      console.log('AUTH: Cleaning up subscription')
+      subscription.unsubscribe()
     }
-  }, [])
+  }, [fetchUserData])
 
   const login = async (email: string, password: string): Promise<boolean> => {
     // This function is now deprecated since we use Magic Link

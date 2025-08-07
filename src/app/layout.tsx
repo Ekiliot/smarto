@@ -37,9 +37,9 @@ export default function RootLayout({
         })
         
         setSession(session)
+        setIsLoading(false)
       } catch (error) {
         console.error('LAYOUT: Error checking session:', error)
-      } finally {
         setIsLoading(false)
       }
     }
@@ -70,13 +70,6 @@ export default function RootLayout({
       subscription.unsubscribe()
     }
   }, [pathname])
-
-  useEffect(() => {
-    console.log('=== LAYOUT: Session state changed ===')
-    console.log('Session:', session ? 'exists' : 'null')
-    console.log('IsLoading:', isLoading)
-    console.log('Pathname:', pathname)
-  }, [session, isLoading, pathname])
 
   if (isLoading) {
     console.log('LAYOUT: Showing loading state')
